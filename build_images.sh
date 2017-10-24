@@ -1,5 +1,5 @@
 TAG="development"
-if [[ -n "$TRAVIS_BRANCH" && "$TRAVIS_BRANCH" != "master" ]]; then
+if [[ -n "$TRAVIS_BRANCH" && "$TRAVIS_BRANCH" == "production" ]]; then
    TAG=$TRAVIS_BRANCH
 fi
 
