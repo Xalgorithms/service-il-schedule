@@ -10,8 +10,14 @@ cluster = Cassandra.cluster(
   hosts: settings.db_hosts,
   port: settings.db_port
 )
-
 $session  = cluster.connect(settings.db_keyspace)
+
+$kafka = Kafka.new(
+  seed_brokers: settings.kafka_broker_hosts,
+  # Set an optional client id in order to identify the client to Kafka:
+  client_id: settings.kafka_client
+)
+
 generator = Cassandra::Uuid::Generator.new
 
 before do
