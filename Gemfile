@@ -6,6 +6,7 @@ gem 'puma'
 gem 'sinatra'
 gem 'sinatra-contrib'
 gem "cassandra-driver"
+gem "ruby-kafka"
 
 group :development do
   gem 'rerun'
