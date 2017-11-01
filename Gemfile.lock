@@ -44,7 +44,7 @@ DEPENDENCIES
   cassandra-driver
   puma
   rerun
-  ruby-kafka (~> 0.5.0)
+  ruby-kafka
   sinatra
   sinatra-contrib
 
