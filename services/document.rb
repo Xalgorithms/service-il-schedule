@@ -10,7 +10,7 @@ def add_document(id, payload)
 end
 
 def deliver_document(id)
-  topic = 'documents'
+  topic = 'xadf.compute.documents'
   producer = $kafka.async_producer
   producer.produce(id, topic: topic)
   producer.deliver_messages
