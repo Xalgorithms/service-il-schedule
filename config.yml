@@ -1,23 +1,15 @@
 development:
-  arango:
-    host: localhost
-    port: 8529
-    username: ''
-    password: ''
-    name: 'xadf'
+  mongo:
+    url: 'mongodb://127.0.0.1:27017/xadf'
 
   kafka:
     broker_hosts: ['localhost:9092']
     client: xadf_schedule
 
 production:
-  arango:
-    host: localhost
-    port: 8529
-    username: ''
-    password: ''
-    name: 'xadf'
-
+  mongo:
+    url: 'mongodb://127.0.0.1:27017/xadf'
+    
   kafka:
     broker_hosts: ['localhost:9092']
     client: xadf_schedule

@@ -8,7 +8,7 @@ require_relative "./services/messages"
 
 config_file 'config.yml'
 
-documents = Services::Documents.new(settings.arango)
+documents = Services::Documents.new(settings.mongo)
 messages = Services::Messages.new(settings.kafka)
 actions = Services::Actions.new(documents, messages)
 
