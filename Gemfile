@@ -3,10 +3,10 @@ source 'https://rubygems.org'
 ruby '2.4.2'
 
 gem 'puma'
+gem "ruby-kafka"
 gem 'sinatra'
 gem 'sinatra-contrib'
-gem "cassandra-driver"
-gem "ruby-kafka"
+gem 'uuid'
 
 group :development do
   gem 'rerun'

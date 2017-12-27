@@ -1,24 +1,16 @@
 require 'sinatra'
 require 'sinatra/json'
 require 'sinatra/config_file'
-require 'cassandra'
 
-require_relative "./services/document"
+require_relative './services/actions'
+require_relative "./services/documents"
+require_relative "./services/messages"
 
 config_file 'config.yml'
-cluster = Cassandra.cluster(
-  hosts: settings.db_hosts,
-  port: settings.db_port
-)
-$session  = cluster.connect(settings.db_keyspace)
 
-$kafka = Kafka.new(
-  seed_brokers: settings.kafka_broker_hosts,
-  # Set an optional client id in order to identify the client to Kafka:
-  client_id: settings.kafka_client
-)
-
-generator = Cassandra::Uuid::Generator.new
+documents = Services::Documents.new(settings.arango)
+messages = Services::Messages.new(settings.kafka)
+actions = Services::Actions.new(documents, messages)
 
 before do
   content_type 'application/json'
@@ -40,15 +32,6 @@ end
 
 post '/actions' do
   data = json_params
-  action = data["name"]
-  payload = data["payload"]
-
-  case action
-  when 'document-add'
-    id = generator.uuid
-    resp = add_document id, payload
-    json(resp)
-  else
-    halt 400, { message:'Unknown action' }.to_json
-  end
+  status = actions.execute(data["name"], data["payload"])
+  json(status)
 end
