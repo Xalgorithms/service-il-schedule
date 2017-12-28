@@ -1,19 +1,15 @@
 development:
-  db_hosts: [localhost]
-  db_port: 9042
-  db_username: ''
-  db_password: ''
-  db_keyspace: xadf
+  mongo:
+    url: 'mongodb://127.0.0.1:27017/xadf'
 
-  kafka_broker_hosts: ['localhost:9092']
-  kafka_client: xadf_schedule
+  kafka:
+    broker_hosts: ['localhost:9092']
+    client: xadf_schedule
 
 production:
-  db_hosts: [localhost]
-  db_port: 9042
-  db_username: ''
-  db_password: ''
-  db_keyspace: xadf
-
-  kafka_broker_hosts: ['localhost:9092']
-  kafka_client: xadf_schedule
+  mongo:
+    url: 'mongodb://127.0.0.1:27017/xadf'
+    
+  kafka:
+    broker_hosts: ['localhost:9092']
+    client: xadf_schedule
