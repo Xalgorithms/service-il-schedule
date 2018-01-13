@@ -3,9 +3,10 @@ require_relative './messages'
 
 module Services
   class Actions
-    def initialize(documents, messages)
+    def initialize(documents, messages, tables)
       @documents = documents
       @messages = messages
+      @tables = tables
     end
     
     def execute(name, payload)
@@ -27,6 +28,7 @@ module Services
     
     def document_add(payload)
       id = @documents.store(payload)
+      @tables.store_envelope(id, payload.fetch('envelope', {}))
       @messages.deliver_document(id)
     end
   end
