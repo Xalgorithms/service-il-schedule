@@ -5,12 +5,14 @@ require 'sinatra/config_file'
 require_relative './services/actions'
 require_relative "./services/documents"
 require_relative "./services/messages"
+require_relative "./services/tables"
 
 config_file 'config.yml'
 
 documents = Services::Documents.new(settings.mongo)
 messages = Services::Messages.new(settings.kafka)
-actions = Services::Actions.new(documents, messages)
+tables = Services::Tables.new(settings.cassandra)
+actions = Services::Actions.new(documents, messages, tables)
 
 before do
   content_type 'application/json'

@@ -6,6 +6,13 @@ development:
     broker_hosts: ['localhost:9092']
     client: xadf_schedule
 
+  cassandra:
+    hosts: [localhost]
+    port: 9042
+    username: ''
+    password: ''
+    keyspace: xadf
+
 production:
   mongo:
     url: 'mongodb://127.0.0.1:27017/xadf'
@@ -13,3 +20,10 @@ production:
   kafka:
     broker_hosts: ['localhost:9092']
     client: xadf_schedule
+
+  cassandra:
+    hosts: [localhost]
+    port: 9042
+    username: ''
+    password: ''
+    keyspace: xadf
