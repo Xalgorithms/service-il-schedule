@@ -1,7 +1,8 @@
-require 'active_support/values/time_zone'
 require 'cassandra'
 require 'date'
 require 'radish/documents/core'
+
+require_relative '../lib/timezones'
 
 module Services
   class Tables
@@ -12,6 +13,7 @@ module Services
         hosts: opts['hosts'],
         port: opts['port'])
       @session = cluster.connect(opts['keyspace'])
+      @tzs = Timezones.new
     end
 
     def store_envelope(id, payload)
@@ -24,9 +26,6 @@ module Services
 
       inserts = juris.map do |n, juri|
         juri.merge(document_id: id, issued: issued, party: n)
-        # country: juri[:country],
-        # region: juri[:region],
-        # timezone: 
       end
 
       within_batch do
@@ -42,7 +41,9 @@ module Services
     def find_codes(address)
       {}.tap do |codes|
         codes[:country] = get(address, 'country.code.value') if has(address, 'country.code.value')
+        codes[:country] = get(address, 'country.name') if !codes[:country] && has(address, 'country.name')
         codes[:region] = get(address, 'subentity.code.value') if has(address, 'subentity.code.value')
+        codes[:region] = get(address, 'subentity.name') if !codes[:region] && has(address, 'subentity.name')
       end
     end
 
@@ -51,10 +52,12 @@ module Services
       address = @juri_paths.map { |path| get(o, path) }.drop_while(&:nil?).first
       if address
         codes = find_codes(address)
-        country = codes.fetch(:country, nil)
-        if country
-          codes.merge(timezone: ActiveSupport::TimeZone.country_zones(country).first.tzinfo.identifier)
-        end
+        tz = @tzs.lookup(
+          { name: get(address, 'country.name'), code: get(address, 'country.code.value') },
+          { name: get(address, 'subentity.name'), code: get(address, 'subentity.code.value') },
+          get(address, 'city'))
+            
+        codes.merge(timezone: tz)
       end
     end
 
