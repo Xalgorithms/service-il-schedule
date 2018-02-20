@@ -9,8 +9,8 @@ gem 'geocoder'
 gem 'mongo'
 gem 'puma'
 gem "ruby-kafka"
-gem 'sinatra'
-gem 'sinatra-contrib'
+gem 'sinatra', "~> 2.0.1"
+gem 'sinatra-contrib', "~> 2.0.1"
 gem 'timezone'
 gem 'uuid'
 
