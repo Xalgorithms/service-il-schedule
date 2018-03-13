@@ -9,10 +9,14 @@ module Services
     include Radish::Documents::Core
     
     def initialize(opts)
-      cluster = ::Cassandra.cluster(
-        hosts: opts['hosts'],
-        port: opts['port'])
-      @session = cluster.connect(opts['keyspace'])
+      begin
+        cluster = ::Cassandra.cluster(
+          hosts: opts['hosts'],
+          port: opts['port'])
+        @session = cluster.connect(opts['keyspace'])
+      rescue ::Cassandra::Errors::NoHostsAvailable
+        puts '! no available Cassandra instance'
+      end        
       @tzs = Timezones.new
     end
 
