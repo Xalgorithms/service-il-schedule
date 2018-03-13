@@ -16,6 +16,8 @@ module Services
         @session = cluster.connect(opts['keyspace'])
       rescue ::Cassandra::Errors::NoHostsAvailable
         puts '! no available Cassandra instance'
+      rescue ::Cassandra::Errors::IOError
+        puts '! failed to connect to cassandra'
       end        
       @tzs = Timezones.new
     end
