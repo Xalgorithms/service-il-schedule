@@ -22,7 +22,7 @@ production:
     client: xadf_schedule
 
   cassandra:
-    hosts: [cassandra.marathon.l4lb.thisdcos.directory]
+    hosts: [node-0-server.cassandra.autoip.dcos.thisdcos.directory, node-1-server.cassandra.autoip.dcos.thisdcos.directory]
     port: 9042
     username: ''
     password: ''
