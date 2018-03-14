@@ -22,7 +22,7 @@ production:
     client: xadf_schedule
 
   cassandra:
-    hosts: [localhost]
+    hosts: [cassandra.marathon.l4lb.thisdcos.directory]
     port: 9042
     username: ''
     password: ''
