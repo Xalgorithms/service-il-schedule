@@ -5,11 +5,13 @@ module Services
     TOPIC = 'xadf.compute.documents'
 
     def initialize(opts)
+      puts "> connecting to kafka (hosts=#{opts['broker_hosts']})"
       @kafka = Kafka.new(
         seed_brokers: opts['broker_hosts'],
         # Set an optional client id in order to identify the client to Kafka:
         client_id: opts['client'],
       )
+      puts "< connected"
     end
     
     def deliver_document(id)

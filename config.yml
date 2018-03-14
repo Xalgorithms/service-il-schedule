@@ -17,7 +17,7 @@ production:
     url: 'mongodb://mongodb.marathon.l4lb.thisdcos.directory:27017'
     
   kafka:
-    broker_hosts: ['localhost:9092']
+    broker_hosts: ['broker.kafka.l4lb.thisdcos.directory:9092']
     client: xadf_schedule
 
   cassandra:

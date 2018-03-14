@@ -10,11 +10,13 @@ module Services
     
     def initialize(opts)
       begin
-        puts "# discovering cluster (hosts=#{opts['hosts']})"
+        puts "> discovering cluster (hosts=#{opts['hosts']})"
         cluster = ::Cassandra.cluster(hosts: opts['hosts'])
 
-        puts "# connecting to keyspace (keyspace=#{opts['keyspace']})"
+        puts "> connecting to keyspace (keyspace=#{opts['keyspace']})"
         @session = cluster.connect(opts['keyspace'])
+
+        puts '< connected'
       rescue ::Cassandra::Errors::NoHostsAvailable => e
         puts '! no available Cassandra instance'
         p e
