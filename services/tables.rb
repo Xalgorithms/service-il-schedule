@@ -21,7 +21,6 @@ module Services
       rescue ::Cassandra::Errors::IOError => e
         puts '! failed to connect to cassandra'
         p e
-      end        
       rescue ::Cassandra::Errors::InvalidError => e
         puts '! failed to connect to cassandra'
         p e
