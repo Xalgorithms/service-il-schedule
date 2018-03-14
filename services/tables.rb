@@ -10,14 +10,17 @@ module Services
     
     def initialize(opts)
       begin
-        cluster = ::Cassandra.cluster(
-          hosts: opts['hosts'],
-          port: opts['port'])
+        puts "# discovering cluster (hosts=#{opts['hosts']})"
+        cluster = ::Cassandra.cluster(hosts: opts['hosts'])
+
+        puts "# connecting to keyspace (keyspace=#{opts['keyspace']})"
         @session = cluster.connect(opts['keyspace'])
-      rescue ::Cassandra::Errors::NoHostsAvailable
+      rescue ::Cassandra::Errors::NoHostsAvailable => e
         puts '! no available Cassandra instance'
-      rescue ::Cassandra::Errors::IOError
+        p e
+      rescue ::Cassandra::Errors::IOError => e
         puts '! failed to connect to cassandra'
+        p e
       end        
       @tzs = Timezones.new
     end

@@ -8,7 +8,6 @@ development:
 
   cassandra:
     hosts: [localhost]
-    port: 9042
     username: ''
     password: ''
     keyspace: xadf
@@ -23,7 +22,6 @@ production:
 
   cassandra:
     hosts: [node-0-server.cassandra.autoip.dcos.thisdcos.directory, node-1-server.cassandra.autoip.dcos.thisdcos.directory]
-    port: 9042
     username: ''
     password: ''
     keyspace: xadf
