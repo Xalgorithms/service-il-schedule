@@ -2,19 +2,30 @@ require 'cassandra'
 require 'date'
 require 'radish/documents/core'
 
+require_relative '../lib/local_env'
 require_relative '../lib/timezones'
 
 module Services
   class Tables
     include Radish::Documents::Core
-    
-    def initialize(opts)
-      begin
-        puts "> discovering cluster (hosts=#{opts['hosts']})"
-        cluster = ::Cassandra.cluster(hosts: opts['hosts'])
 
-        puts "> connecting to keyspace (keyspace=#{opts['keyspace']})"
-        @session = cluster.connect(opts['keyspace'])
+    LOCAL_ENV = LocalEnv.new(
+      'CASSANDRA', {
+        hosts:    { type: :list,   default: ['localhost'] },
+        keyspace: { type: :string, default: 'xadf' },
+      })
+    
+
+    def initialize()
+      begin
+        hosts = LOCAL_ENV.get(:hosts)
+        keyspace = LOCAL_ENV.get(:keyspace)
+
+        puts "> discovering cluster (hosts=#{hosts})"
+        cluster = ::Cassandra.cluster(hosts: hosts)
+
+        puts "> connecting to keyspace (keyspace=#{keyspace})"
+        @session = cluster.connect(keyspace)
 
         puts '< connected'
       rescue ::Cassandra::Errors::NoHostsAvailable => e

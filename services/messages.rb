@@ -1,22 +1,35 @@
 require 'kafka'
 
+require_relative '../lib/local_env'
+
 module Services
   class Messages
-    TOPIC = 'xadf.compute.documents'
+    LOCAL_ENV = LocalEnv.new(
+      'KAFKA', {
+        topic:   { type: :string, default: 'xadf.compute.documents' },
+        brokers: { type: :list,   default: ['localhost:9092'] },
+        client:  { type: :string, default: 'xadf_services_schedule' },
+      })
 
-    def initialize(opts)
-      puts "> connecting to kafka (hosts=#{opts['broker_hosts']})"
+    def initialize()
+      topic = LOCAL_ENV.get(:topic)
+      brokers = LOCAL_ENV.get(:brokers)
+      client = LOCAL_ENV.get(:client)
+      
+      puts "> connecting to kafka (brokers=#{brokers}; client=#{client})"
       @kafka = Kafka.new(
-        seed_brokers: opts['broker_hosts'],
+        seed_brokers: brokers,
         # Set an optional client id in order to identify the client to Kafka:
-        client_id: opts['client'],
+        client_id: client,
       )
       puts "< connected"
     end
     
     def deliver_document(id)
       with_producer do |producer|
-        producer.produce(id, topic: TOPIC)
+        topic = LOCAL_ENV.get(:topic)
+        puts "> deliver (topic=#{topic})"
+        producer.produce(id, topic: topic)
       end
     end
 

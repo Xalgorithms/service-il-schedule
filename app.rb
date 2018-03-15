@@ -7,15 +7,13 @@ require_relative './services/documents'
 require_relative './services/messages'
 require_relative './services/tables'
 
-config_file 'config.yml'
-
 puts '# Starting services'
 puts '# - documents'
-documents = Services::Documents.new(settings.mongo)
+documents = Services::Documents.new()
 puts '# - messages'
-messages = Services::Messages.new(settings.kafka)
+messages = Services::Messages.new()
 puts '# - tables'
-tables = Services::Tables.new(settings.cassandra)
+tables = Services::Tables.new()
 puts '# - actions'
 actions = Services::Actions.new(documents, messages, tables)
 
