@@ -10,6 +10,7 @@ module Services
     end
     
     def execute(name, payload)
+      puts "# (services/actions) execute (name=#{name})"
       @fns ||= {
         'document-add' => method(:document_add),
       }
@@ -27,8 +28,11 @@ module Services
     private
     
     def document_add(payload)
+      puts "# (services/schedule) adding document"
       id = @documents.store(payload)
+      puts "# (services/schedule) storing envelope (id=#{id})"
       @tables.store_envelope(id, payload.fetch('envelope', {}))
+      puts "# (services/schedule) enque (id=#{id})"
       @messages.deliver_document(id)
     end
   end

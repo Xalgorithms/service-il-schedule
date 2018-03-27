@@ -26,9 +26,10 @@ module Services
     end
     
     def deliver_document(id)
+      puts "# (services/messages) delivering document (id=#{id})"
       with_producer do |producer|
         topic = LOCAL_ENV.get(:topic)
-        puts "> deliver (topic=#{topic})"
+        puts "> deliver (topic=#{topic}; id=#{id})"
         producer.produce(id, topic: topic)
       end
     end

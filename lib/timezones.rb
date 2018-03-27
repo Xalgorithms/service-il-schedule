@@ -2,6 +2,7 @@ require 'countries'
 require 'geocoder'
 require 'timezone'
 
+# generate API key: https://developers.google.com/maps/documentation/timezone/get-api-key
 class Timezones
   def initialize
     Timezone::Lookup.config(:google) do |c|
