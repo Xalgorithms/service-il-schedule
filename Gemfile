@@ -13,6 +13,7 @@ gem 'sinatra', "~> 2.0.1"
 gem 'sinatra-contrib', "~> 2.0.1"
 gem 'timezone'
 gem 'uuid'
+gem 'rack-cors'
 
 gem 'radish', git: 'https://github.com/karfai/radish.git'
 
