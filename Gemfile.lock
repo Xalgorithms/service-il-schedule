@@ -55,6 +55,7 @@ GEM
       method_source (~> 0.9.0)
     puma (3.11.0)
     rack (2.0.4)
+    rack-cors (1.0.2)
     rack-protection (2.0.1)
       rack
     rb-fsevent (0.10.2)
@@ -114,6 +115,7 @@ DEPENDENCIES
   mongo
   pry
   puma
+  rack-cors
   radish!
   rerun
   rspec
