@@ -41,6 +41,6 @@ class StatusControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecti
       contentType(home) mustBe Some("text/html")
       contentAsString(home) must include ("Welcome to Play")
     }
-  }
  */
+  }
 }

@@ -1,15 +1,36 @@
-name := """schedule"""
-organization := "org.xalgorithms"
+lazy val VERSION_MONGO_SCALA       = "2.3.0"
+lazy val VERSION_SCALA             = "2.12.4"
+lazy val VERSION_SCALA_TEST        = "3.1.2"
+lazy val VERSION_CASSANDRA         = "3.5.0"
+lazy val VERSION_AKKA_STREAM_KAFKA = "0.20"
+lazy val VERSION_SCALA_MOCK        = "4.1.0"
+lazy val VERSION_STTP              = "1.1.14"
+lazy val VERSION_SCALA_ISO         = "0.1.2"
 
-version := "1.0-SNAPSHOT"
+lazy val meta = Seq(
+  name := """services-schedule""",
+  organization := "org.xalgorithms",
+  version := "0.0.1-SNAPSHOT",
+  scalaVersion := VERSION_SCALA,
+)
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala)
+lazy val lib_deps = Seq(
+  guice,
+  "org.mongodb.scala"      %% "mongo-scala-driver"      % VERSION_MONGO_SCALA,
+  "com.typesafe.akka"      %% "akka-stream-kafka"       % VERSION_AKKA_STREAM_KAFKA,
+  "com.datastax.cassandra" %  "cassandra-driver-core"   % VERSION_CASSANDRA,
+  "com.softwaremill.sttp"  %% "core"                    % VERSION_STTP,
+  "com.softwaremill.sttp"  %% "akka-http-backend"       % VERSION_STTP,
+  "com.vitorsvieira"       %% "scala-iso"               % VERSION_SCALA_ISO,
+  "org.scalatestplus.play" %% "scalatestplus-play"      % VERSION_SCALA_TEST % Test,
+  "org.scalamock"          %% "scalamock"               % VERSION_SCALA_MOCK % Test
+)
 
-scalaVersion := "2.12.4"
-
-libraryDependencies += guice
-libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
-
+lazy val root = (project in file("."))
+  .settings(meta)
+  .settings(libraryDependencies ++= lib_deps)
+  .enablePlugins(PlayScala)
+  
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "org.xalgorithms.controllers._"
 
