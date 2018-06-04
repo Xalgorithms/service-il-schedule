@@ -52,3 +52,5 @@ logs/
 project/project/
 project/target/
 target/
+app/services/subdivisions/
+app/services/Countries.scala
