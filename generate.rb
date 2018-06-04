@@ -27,17 +27,6 @@ countries = Dir.glob('iso_data/countries/*.yaml').inject({}) do |all, fn|
   end
 
   all.merge(code => country)
-  # args = [
-  #   "\"#{o['name']}\"",
-  #   "\"#{o['alpha2']}\"",
-  #   "\"#{o['alpha3']}\"",
-  #   "\"#{o['continent']}\"",
-  #   "LatLon(\"#{o['geo']['latitude']}\", \"#{o['geo']['longitude']}\")", 
-  #   "\"#{o['region']}\"",
-  #   "\"#{o['subregion']}\"",
-  # ]
-
-  # all.merge(code => "Country(#{args.join(', ')})")
 end
 
 subdivisions.each do |(country_code, subdivisions)|
