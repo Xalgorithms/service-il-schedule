@@ -25,7 +25,7 @@ class TimeZonesSpec extends FlatSpec with Matchers with MockFactory {
         "region" -> Tuple2("New Jersey", "NJ"),
         "country" -> Tuple2("United States of America", "US", "USA"),
         "geocode" -> Tuple2("40.735657", "-74.1723667"),
-        "ex" -> "America/Halifax"
+        "ex" -> "America/New_York"
       ),
       Map(
         "city" -> "Liverpool",

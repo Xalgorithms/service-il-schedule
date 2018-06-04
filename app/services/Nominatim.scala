@@ -35,7 +35,6 @@ class NominatimGeocoder extends Geocoder {
 
   def lookup(q: Query): Future[LatLon] = {
     val countrycodes = Seq(q.country.code2, q.country.code3).mkString(",")
-    println(uri"https://nominatim.openstreetmap.org/search/?city=${q.city.name}&countrycodes=${countrycodes}&format=json")
     val req = sttp.get(uri"https://nominatim.openstreetmap.org/search/?city=${q.city.name}&countrycodes=${countrycodes}&format=json")
     val pr = Promise[LatLon]()
 
