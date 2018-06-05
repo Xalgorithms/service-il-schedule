@@ -71,6 +71,30 @@ class TimeZonesSpec extends FlatSpec with Matchers with MockFactory {
     )
   )
 
+  val country_cases = Seq(
+    Case(
+      None,
+      None,
+      Country("Canada", "CA", "CAN"),
+      null,
+      "America/Regina"
+    ),
+    Case(
+      None,
+      None,
+      Country("United States of America", "US", "USA"),
+      null,
+      "America/Chicago"
+    ),
+    Case(
+      None,
+      None,
+      Country("United Kingdom of Great Britain and Northern Ireland", "GB", "GBR"),
+      null,
+      "Europe/London"
+    )
+  )
+
   def validate_city_timezone(tc: Case, country_code: String) {
     val geocoder = mock[Geocoder]
     val api = mock[GoogleTimeZoneApi]
@@ -239,6 +263,74 @@ class TimeZonesSpec extends FlatSpec with Matchers with MockFactory {
           c.geo,
           c.ex),
         code)
+    }
+  }
+
+  it should "produce a valid timezone based on country" in {
+    country_cases.foreach { c =>
+      val code = c.country.code2
+
+      validate_country_timezone(c, code)
+
+      // empty subdivision
+      validate_country_timezone(
+        Case(
+          None,
+          Some(Subdivision()),
+          c.country,
+          c.geo,
+          c.ex),
+        code)
+
+      // just the code
+      validate_country_timezone(
+        Case(
+          None,
+          None,
+          Country(null, c.country.code2),
+          c.geo,
+          c.ex),
+        code)
+
+      // just the code in the name
+      validate_country_timezone(
+        Case(
+          None,
+          None,
+          Country(c.country.code2),
+          c.geo,
+          c.ex),
+      code)
+
+      // just the name
+      validate_country_timezone(
+        Case(
+          None,
+          None,
+          Country(c.country.name),
+          c.geo,
+          c.ex),
+        code)
+
+      // just the code3
+      validate_country_timezone(
+        Case(
+          None,
+          None,
+          Country(null, null, c.country.code3),
+          c.geo,
+          c.ex),
+        code)
+
+      // just the code3 in the name
+      validate_country_timezone(
+        Case(
+          None,
+          None,
+          Country(c.country.code3),
+          c.geo,
+          c.ex),
+      code)
     }
   }
 
