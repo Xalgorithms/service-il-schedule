@@ -14,38 +14,40 @@ class TimeZones(
     (c: Country) => FindCountry.by_code3(c.code3),
     (c: Country) => FindCountry.by_code3(c.name)
   )
+  val subdivision_fns = Seq[(String, Subdivision) => Option[Subdivision]](
+    (cc: String, s: Subdivision) => FindSubdivision.by_full_code(s.code),
+    (cc: String, s: Subdivision) => FindSubdivision.by_full_code(s.name),
+    (cc: String, s: Subdivision) => FindSubdivision.by_name(cc, s.name)
+  )
 
-  def lookup(country: Country, subdivision: Subdivision, city: City): Option[String] = {
-    lookup_timezone_by_location(
-      lookup_location(normalize_country(country), normalize_subdivision(subdivision), city)
-    )
-  }
-
-  def lookup_location(country: Country, subdivision: Subdivision, city: City): Option[LatLon] = {
-    city match {
-      case null => lookup_location_by_subdivision(subdivision) match {
-        case None => {
-          if (null != country.geo) {
-            Some(country.geo)
-          } else {
-            None
-          }
-        }
-        case opt => opt
+  def lookup(
+    country: Option[Country], subdivision: Option[Subdivision], city: Option[City]
+  ): Option[String] = {
+    normalize_country(country) match {
+      case Some(fc) => {
+        lookup_timezone_by_location(
+          lookup_location(fc, normalize_subdivision(fc.code2, subdivision), city)
+        )
       }
-      case _ => lookup_location_by_city(country, city)
+      case None => None
     }
   }
 
-  def lookup_location_by_subdivision(subdivision: Subdivision): Option[LatLon] = subdivision match {
-    case null => None
-    case _ => {
-      if (null != subdivision.geo) {
-        Some(subdivision.geo)
-      } else {
-        None
-      }
+  def lookup_location(
+    country: Country, opt_subdivision: Option[Subdivision], opt_city: Option[City]
+  ): Option[LatLon] = opt_city match {
+    case None => lookup_location_by_subdivision(opt_subdivision) match {
+      case None => Option(country.geo)
+      case opt => opt
     }
+    case Some(city) => lookup_location_by_city(country, city)
+  }
+
+  def lookup_location_by_subdivision(
+    opt_subdivision: Option[Subdivision]
+  ): Option[LatLon] = opt_subdivision match {
+    case Some(subdivision) => Option(subdivision.geo)
+    case None => None
   }
 
   def lookup_location_by_city(country: Country, city: City): Option[LatLon] = {
@@ -67,20 +69,25 @@ class TimeZones(
     case None => None
   }
 
-  def normalize_country(country: Country): Country = {
-    country_fns.map { fn => fn(country) }.filterNot { o => o == None } match {
-      case (oc: Option[Country]) :: tail => {
-        oc match {
-          case Some(full_country) => full_country
-          case None => country
-        }
+  def normalize_country(opt_country: Option[Country]): Option[Country] = opt_country match {
+    case Some(country) => {
+      country_fns.map { fn => fn(country) }.flatten match {
+        case (c: Country) :: tail => Some(c)
+        case _ => Some(country)
       }
-
-      case _ => country
     }
+    case None => None
   }
 
-  def normalize_subdivision(subdivision: Subdivision): Subdivision = {
-    subdivision
+  def normalize_subdivision(
+    country_code2: String, opt_subdivision: Option[Subdivision]
+  ): Option[Subdivision] = opt_subdivision match {
+    case Some(subdivision) => {
+      subdivision_fns.map { fn => fn(country_code2, subdivision) }.flatten match {
+        case (s: Subdivision) :: tail => Some(s)
+        case _ => Some(subdivision)
+      }
+    }
+    case None => None
   }
 }
