@@ -26,15 +26,28 @@ object FindCountry {
 }
 
 object FindSubdivision {
-  def by_full_code(code: String): Option[Subdivision] = {
-    code.split("-") match {
-      case Array(country_code, subdivision_code) => {
-        FindCountry.by_code2(country_code) match {
-          case Some(country) => country.subdivisions.find(subdivision_code == _.code)
-          case None => None
+  def by_full_code(code: String): Option[Subdivision] = code match {
+    case null => None
+    case _ => {
+      code.split("-") match {
+        case Array(country_code, subdivision_code) => {
+          FindCountry.by_code2(country_code) match {
+            case Some(country) => country.subdivisions.find(subdivision_code == _.code)
+            case None => None
+          }
         }
+        case _ => None
       }
-      case _ => None
+    }
+  }
+
+  def by_name(country_code: String, name: String): Option[Subdivision] = country_code match {
+    case null => None
+    case _ => {
+      FindCountry.by_code2(country_code) match {
+        case Some(country) => country.subdivisions.find(name == _.name)
+        case None => None
+      }
     }
   }
 }
