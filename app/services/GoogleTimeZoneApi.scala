@@ -16,7 +16,7 @@ class FailureResponseNotObject extends Throwable {
 class FailureParseTimeZoneInfo extends Throwable {
 }
 
-object GoogleTimeZoneApi {
+class GoogleTimeZoneApi {
   implicit val time_zone_info_reads: Reads[TimeZoneInfo] = (
     (JsPath \ "timeZoneId").read[String] and
     (JsPath \ "timeZoneName").read[String] and
@@ -34,7 +34,7 @@ object GoogleTimeZoneApi {
     case _ => Future.failed(new FailureResponseNotObject())
   }
 
-  def apply(location: LatLon): Future[TimeZoneInfo] = {
+  def lookup(location: LatLon): Future[TimeZoneInfo] = {
     val pr = Promise[TimeZoneInfo]
     val ts = System.currentTimeMillis() / 1000
     val key = sys.env.getOrElse("TIMEZONE_API_KEY", "")
