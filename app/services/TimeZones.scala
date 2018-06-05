@@ -21,7 +21,7 @@ class TimeZones(
   )
 
   def lookup(
-    country: Option[Country], subdivision: Option[Subdivision], city: Option[City]
+    country: Option[Country] = None, subdivision: Option[Subdivision] = None, city: Option[City] = None
   ): Option[String] = {
     normalize_country(country) match {
       case Some(fc) => {

@@ -79,8 +79,9 @@ class TimeZonesSpec extends FlatSpec with Matchers with MockFactory {
     val query_country = Countries.ALL(country_code)
 
     // ALL information
-    (geocoder.lookup _).expects(Query(query_country, tc.city.get)).returning(Future.successful(tc.geo))
-    (api.lookup _).expects(tc.geo).returning(Future.successful(tzi))
+    (geocoder.lookup _).expects(Query(query_country, tc.city.get)).once.returning(Future.successful(tc.geo))
+    (api.lookup _).expects(tc.geo).once.returning(Future.successful(tzi))
+
     tzs.lookup(Some(tc.country), tc.subdivision, tc.city) shouldEqual(Some(tc.ex))
   }
 
@@ -92,8 +93,10 @@ class TimeZonesSpec extends FlatSpec with Matchers with MockFactory {
 
     FindSubdivision.by_full_code(subdivision_code) match {
       case Some(full) => {
-        (api.lookup _).expects(full.geo).returning(Future.successful(tzi))
+        (api.lookup _).expects(full.geo).twice.returning(Future.successful(tzi))
+
         tzs.lookup(Option(tc.country), tc.subdivision, tc.city) shouldEqual(Some(tc.ex))
+        tzs.lookup(Option(tc.country), tc.subdivision) shouldEqual(Some(tc.ex))
       }
       case None => true shouldBe(false)
     }
@@ -107,8 +110,11 @@ class TimeZonesSpec extends FlatSpec with Matchers with MockFactory {
 
     FindCountry.by_code2(country_code2) match {
       case Some(full) => {
-        (api.lookup _).expects(full.geo).returning(Future.successful(tzi))
+        (api.lookup _).expects(full.geo).repeat(3).returning(Future.successful(tzi))
+
         tzs.lookup(Some(tc.country), tc.subdivision, tc.city) shouldEqual(Some(tc.ex))
+        tzs.lookup(Some(tc.country), tc.subdivision) shouldEqual(Some(tc.ex))
+        tzs.lookup(Some(tc.country)) shouldEqual(Some(tc.ex))
       }
       case None => true shouldBe(false)
     }
@@ -242,5 +248,8 @@ class TimeZonesSpec extends FlatSpec with Matchers with MockFactory {
     val tzs = new TimeZones(geocoder, api)
 
     tzs.lookup(None, None, None) shouldEqual(None)
+    tzs.lookup(None, None) shouldEqual(None)
+    tzs.lookup(None) shouldEqual(None)
+    tzs.lookup() shouldEqual(None)
   }
 }
