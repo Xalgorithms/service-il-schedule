@@ -20,10 +20,10 @@ class TablesActor extends Actor {
   def receive = {
     case GlobalMessages.DocumentAdded(id) => {
       Logger.info(s"document added (${id})")
-      db.storeEnvelope(Envelope("4", "buyer", "CA", "CA-ON", "America/Toronto", new DateTime())).onComplete {
-        case Success(o) => println(o)
-        case Failure(e) => println(e)
-      }
+      // db.storeEnvelope(Envelope("4", "buyer", "CA", "CA-ON", "America/Toronto", new DateTime())).onComplete {
+      //   case Success(o) => println(o)
+      //   case Failure(e) => println(e)
+      // }
     }
   }
 }
