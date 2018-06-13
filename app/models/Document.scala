@@ -22,7 +22,15 @@ object Document {
     }
   }
 
-  def maybe_find_document(doc: BsonDocument, k: String): Option[BsonDocument] = {
+  def maybe_find_first_text(doc: BsonDocument, ks: Seq[String]): Option[String] = {
+    val vals = maybe_find_many_text(doc, ks)
+    vals.size match {
+      case 0 => None
+      case _ => Some(vals.head)
+    }
+  }
+
+    def maybe_find_document(doc: BsonDocument, k: String): Option[BsonDocument] = {
     maybe_find_value(doc, k) match {
       case Some(v) => Option(convert_to_document(v))
       case None    => None
@@ -42,6 +50,14 @@ object Document {
         case Some(v) => seq :+ v
         case None    => seq
       }
+    }
+  }
+
+  def maybe_find_first_values(doc: BsonDocument, ks: Seq[String]): Option[BsonValue] = {
+    val ms = maybe_find_many_values(doc, ks)
+    ms.size match {
+      case 0 => None
+      case _ => Some(ms.head)
     }
   }
 
