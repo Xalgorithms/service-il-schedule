@@ -30,10 +30,27 @@ object Document {
     }
   }
 
-    def maybe_find_document(doc: BsonDocument, k: String): Option[BsonDocument] = {
+  def maybe_find_document(doc: BsonDocument, k: String): Option[BsonDocument] = {
     maybe_find_value(doc, k) match {
       case Some(v) => Option(convert_to_document(v))
       case None    => None
+    }
+  }
+
+  def maybe_find_many_document(doc: BsonDocument, ks: Seq[String]): Seq[BsonDocument] = {
+    maybe_find_many_values(doc, ks).foldLeft(Seq[BsonDocument]()) { (seq, v) =>
+      convert_to_document(v) match {
+        case null => seq
+        case doc => seq :+ doc
+      }
+    }
+  }
+
+  def maybe_find_first_document(doc: BsonDocument, ks: Seq[String]): Option[BsonDocument] = {
+    val vals = maybe_find_many_document(doc, ks)
+    vals.size match {
+      case 0 => None
+      case _ => Some(vals.head)
     }
   }
 

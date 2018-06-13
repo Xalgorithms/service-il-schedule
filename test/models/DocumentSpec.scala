@@ -39,7 +39,7 @@ class DocumentSpec extends FlatSpec with Matchers with MockFactory {
     }
   }
 
-  it should "find the first of many elements" in {
+  it should "find the first of many text elements" in {
     val expects = Seq(
       Tuple2(Seq("a", "b"), Some("AA")),
       Tuple2(Seq("c", "a"), Some("AA")),
@@ -63,6 +63,32 @@ class DocumentSpec extends FlatSpec with Matchers with MockFactory {
 
     expects.foreach { case (k, ex) =>
       Document.maybe_find_document(doc, k) shouldEqual(ex)
+    }
+  }
+
+  it should "find many document elements" in {
+    val expects = Seq(
+      Tuple2(Seq("a", "b"), Seq()),
+      Tuple2(Seq("a", "c"), Seq(doc.getDocument("c", null))),
+      Tuple2(Seq("a", "s", "c", "f"), Seq(doc.getDocument("c", null), doc.getDocument("f", null))),
+      Tuple2(Seq("c.x", "c.y"), Seq(doc.getDocument("c", null).getDocument("x", null)))
+    )
+
+    expects.foreach { tup =>
+      Document.maybe_find_many_document(doc, tup._1) shouldEqual(tup._2)
+    }
+  }
+
+  it should "find the first of many document elements" in {
+    val expects = Seq(
+      Tuple2(Seq("a", "b"), None),
+      Tuple2(Seq("a", "c"), Some(doc.getDocument("c", null))),
+      Tuple2(Seq("a", "s", "c", "f"), Some(doc.getDocument("c", null))),
+      Tuple2(Seq("c.x", "c.y"), Some(doc.getDocument("c", null).getDocument("x", null)))
+    )
+
+    expects.foreach { tup =>
+      Document.maybe_find_first_document(doc, tup._1) shouldEqual(tup._2)
     }
   }
 
