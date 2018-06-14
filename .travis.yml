@@ -1,11 +1,9 @@
-sudo: required
-language: ruby
-rvm:
-- 2.4.2
-services:
-- docker
+language: scala
+scala:
+- 2.12.4
 script:
-- "bundle exec rspec && ./build_images.sh"
+- sbt test
+- sbt package
 notifications:
   slack:
     rooms:
