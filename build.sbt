@@ -35,7 +35,7 @@ lazy val VERSION_JODA_CONVERT      = "2.1"
 lazy val meta = Seq(
   name := """interlibr-service-schedule""",
   organization := "org.xalgorithms",
-  version := "0.0.14",
+  version := "0.1.0",
   scalaVersion := VERSION_SCALA,
 )
 
