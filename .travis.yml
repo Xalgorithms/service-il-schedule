@@ -1,8 +1,10 @@
 language: scala
 scala:
 - 2.12.4
+before_install:
+- bundle
 script:
-- bundle && bundle exec ruby generate.rb
+- bundle exec ruby generate.rb
 - sbt test
 - sbt package
 notifications:
