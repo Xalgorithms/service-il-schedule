@@ -58,4 +58,78 @@ class JurisdictionsSpec extends FlatSpec with Matchers with MockFactory {
       FindSubdivision.by_name(null, name) shouldEqual(None)
     }
   }
+
+  it should "find the subdivision by country code and subdivision code" in {
+    val subdivisions = Map(
+      "LIV" -> Tuple2("GB", Subdivision("Liverpool", "LIV", LatLon("53.4083714", "-2.9915726"))),
+      "SK"  -> Tuple2("CA", Subdivision("Saskatchewan", "SK", LatLon("52.9399159", "-106.4508639"))),
+      "NS"  -> Tuple2("CA", Subdivision("Nova Scotia", "NS", LatLon("44.68198659999999", "-63.744311"))),
+      "AG"  -> Tuple2("IT", Subdivision("Agrigento", "AG", LatLon("37.3110897", "13.5765475"))),
+      "VE"  -> Tuple2("IT", Subdivision("Venezia", "VE", LatLon("45.4408474", "12.3155151")))
+    )
+
+    FindSubdivision.by_code(null, null) shouldEqual(None)
+    subdivisions.foreach { case (code, tup) =>
+      FindSubdivision.by_code(tup._1, code) shouldEqual(Some(tup._2))
+      FindSubdivision.by_code(null, code) shouldEqual(None)
+    }
+  }
+
+  "NormalizeCountry" should "produce a fully populated Country based on sparse data" in {
+    val ca = FindCountry.by_code2("CA").getOrElse(null)
+
+    ca should not be null
+
+    val expects = Seq(
+      // just code2
+      Tuple2(Country(null, "CA"), ca),
+      // code2 in the name
+      Tuple2(Country("CA"), ca),
+      // just name
+      Tuple2(Country("Canada"), ca),
+      // just code3
+      Tuple2(Country(null, null, "CAN"), ca),
+      // code3 in the name
+      Tuple2(Country("CAN"), ca),
+      // a country we won't find
+      Tuple2(Country("Foo"), Country("Foo"))
+    )
+
+    expects.foreach { case (c, ex) =>
+      NormalizeCountry(c) shouldEqual(ex)
+    }
+  }
+
+
+  "NormalizeSubdivision" should "produce a fully populated Subdivision based on sparse data" in {
+    val ca_on = FindSubdivision.by_full_code("CA-ON").getOrElse(null)
+    val ca_ns = FindSubdivision.by_full_code("CA-NS").getOrElse(null)
+
+    ca_on should not be null
+    ca_ns should not be null
+
+    val expects = Seq(
+      // name
+      Tuple2(Subdivision("Ontario"), ca_on),
+      Tuple2(Subdivision("Nova Scotia"), ca_ns),
+      // full code in name
+      Tuple2(Subdivision("CA-ON"), ca_on),
+      Tuple2(Subdivision("CA-NS"), ca_ns),
+      // full code
+      Tuple2(Subdivision(null, "CA-ON"), ca_on),
+      Tuple2(Subdivision(null, "CA-NS"), ca_ns),
+      // code in name
+      Tuple2(Subdivision("ON"), ca_on),
+      Tuple2(Subdivision("NS"), ca_ns),
+      // code
+      Tuple2(Subdivision(null, "ON"), ca_on),
+      Tuple2(Subdivision(null, "NS"), ca_ns),
+      // something we won't find in Canada
+      Tuple2(Subdivision("Delaware"), Subdivision("Delaware"))
+    )
+
+    expects.foreach { case (st, ex) =>
+      NormalizeSubdivision("CA", st) shouldEqual(ex)
+    }
+  }
 }

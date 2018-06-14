@@ -25,6 +25,28 @@ object FindCountry {
   }
 }
 
+object NormalizeCountry {
+  private val country_fns = Seq[(Country) => Option[Country]](
+    (c: Country) => FindCountry.by_code2(c.code2),
+    (c: Country) => FindCountry.by_code2(c.name),
+    (c: Country) => FindCountry.by_name(c.name),
+    (c: Country) => FindCountry.by_code3(c.code3),
+    (c: Country) => FindCountry.by_code3(c.name)
+  )
+
+  def apply(country: Country): Country = {
+    country_fns.map { fn => fn(country) }.flatten match {
+      case (c: Country) :: tail => c
+      case _ => country
+    }
+  }
+}
+
+case class Subdivision(
+  val name: String = null,
+  val code: String = null,
+  val geo: LatLon = null)
+
 object FindSubdivision {
   def by_full_code(code: String): Option[Subdivision] = code match {
     case null => None
@@ -41,6 +63,16 @@ object FindSubdivision {
     }
   }
 
+  def by_code(country_code: String, code: String): Option[Subdivision] = country_code match {
+    case null => None
+    case _ => {
+      FindCountry.by_code2(country_code) match {
+        case Some(country) => country.subdivisions.find(code == _.code)
+        case None => None
+      }
+    }
+  }
+
   def by_name(country_code: String, name: String): Option[Subdivision] = country_code match {
     case null => None
     case _ => {
@@ -52,9 +84,22 @@ object FindSubdivision {
   }
 }
 
-case class Subdivision(
-  val name: String = null,
-  val code: String = null,
-  val geo: LatLon = null)
+object NormalizeSubdivision {
+  private val subdivision_fns = Seq[(String, Subdivision) => Option[Subdivision]](
+    (cc: String, s: Subdivision) => FindSubdivision.by_full_code(s.code),
+    (cc: String, s: Subdivision) => FindSubdivision.by_full_code(s.name),
+    (cc: String, s: Subdivision) => FindSubdivision.by_code(cc, s.code),
+    (cc: String, s: Subdivision) => FindSubdivision.by_code(cc, s.name),
+    (cc: String, s: Subdivision) => FindSubdivision.by_name(cc, s.name)
+  )
+
+  def apply(country_code2: String, subdivision: Subdivision): Subdivision = {
+    subdivision_fns.map { fn => fn(country_code2, subdivision) }.flatten match {
+      case (s: Subdivision) :: tail => s
+      case _ => subdivision
+    }
+  }
+}
 
 case class City(val name: String)
+

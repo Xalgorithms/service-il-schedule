@@ -7,19 +7,6 @@ class TimeZones(
   geocoder: Geocoder = new NominatimGeocoder,
   api: GoogleTimeZoneApi = new GoogleTimeZoneApi()
 ) {
-  val country_fns = Seq[(Country) => Option[Country]](
-    (c: Country) => FindCountry.by_code2(c.code2),
-    (c: Country) => FindCountry.by_code2(c.name),
-    (c: Country) => FindCountry.by_name(c.name),
-    (c: Country) => FindCountry.by_code3(c.code3),
-    (c: Country) => FindCountry.by_code3(c.name)
-  )
-  val subdivision_fns = Seq[(String, Subdivision) => Option[Subdivision]](
-    (cc: String, s: Subdivision) => FindSubdivision.by_full_code(s.code),
-    (cc: String, s: Subdivision) => FindSubdivision.by_full_code(s.name),
-    (cc: String, s: Subdivision) => FindSubdivision.by_name(cc, s.name)
-  )
-
   def lookup(
     country: Option[Country] = None, subdivision: Option[Subdivision] = None, city: Option[City] = None
   ): Option[String] = {
@@ -70,24 +57,14 @@ class TimeZones(
   }
 
   def normalize_country(opt_country: Option[Country]): Option[Country] = opt_country match {
-    case Some(country) => {
-      country_fns.map { fn => fn(country) }.flatten match {
-        case (c: Country) :: tail => Some(c)
-        case _ => Some(country)
-      }
-    }
     case None => None
+    case Some(country) => Some(NormalizeCountry(country))
   }
 
   def normalize_subdivision(
     country_code2: String, opt_subdivision: Option[Subdivision]
   ): Option[Subdivision] = opt_subdivision match {
-    case Some(subdivision) => {
-      subdivision_fns.map { fn => fn(country_code2, subdivision) }.flatten match {
-        case (s: Subdivision) :: tail => Some(s)
-        case _ => Some(subdivision)
-      }
-    }
     case None => None
+    case Some(subdivision) => Some(NormalizeSubdivision(country_code2, subdivision))
   }
 }
