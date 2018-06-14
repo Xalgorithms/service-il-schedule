@@ -1,15 +1,19 @@
+sudo: required
 language: scala
 scala:
-- 2.12.4
+  - 2.12.4
+services:
+  - docker
 cache:
   directories:
   - $HOME/.m2
 before_install:
-- bundle
+  - bundle
 script:
-- bundle exec ruby generate.rb
-- sbt test
-- sbt package
+  - bundle exec ruby generate.rb
+  - sbt test
+  - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - sbt docker:publish
 notifications:
   slack:
     rooms:

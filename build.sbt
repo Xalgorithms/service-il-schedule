@@ -11,9 +11,9 @@ lazy val VERSION_JODA              = "2.10"
 lazy val VERSION_JODA_CONVERT      = "2.1"
 
 lazy val meta = Seq(
-  name := """services-schedule""",
+  name := """interlibr-service-schedule""",
   organization := "org.xalgorithms",
-  version := "0.0.1-SNAPSHOT",
+  version := "0.0.14",
   scalaVersion := VERSION_SCALA,
 )
 
@@ -36,6 +36,12 @@ lazy val root = (project in file("."))
   .settings(meta)
   .settings(libraryDependencies ++= lib_deps)
   .enablePlugins(PlayScala)
+  .enablePlugins(JavaAppPackaging)
+  .enablePlugins(DockerPlugin)
+  .enablePlugins(AshScriptPlugin)
+
+dockerBaseImage := "openjdk:jre-alpine"
+dockerUsername := Some("xalgorithms")
   
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "org.xalgorithms.controllers._"
