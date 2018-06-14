@@ -8,7 +8,8 @@ import scala.util.{ Success, Failure }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-import models.{ Envelope, InterlibrDatabase, ConnectedInterlibrDatabase }
+import models.{ DocumentEnvelope, Envelope, InterlibrDatabase, ConnectedInterlibrDatabase }
+import services.{ Mongo }
 
 object TablesActor {
   def props = Props[TablesActor]
@@ -16,14 +17,25 @@ object TablesActor {
 
 class TablesActor extends Actor {
   val db: InterlibrDatabase = ConnectedInterlibrDatabase
+  val mongo = new Mongo()
 
   def receive = {
     case GlobalMessages.DocumentAdded(id) => {
       Logger.info(s"document added (${id})")
-      // db.storeEnvelope(Envelope("4", "buyer", "CA", "CA-ON", "America/Toronto", new DateTime())).onComplete {
-      //   case Success(o) => println(o)
-      //   case Failure(e) => println(e)
-      // }
+      mongo.find_one(id).onComplete {
+        case Success(doc) => {
+          Logger.info(s"found document (public_id=${id})")
+          val de = new DocumentEnvelope(id, doc)
+          de.rows.foreach { e =>
+            Logger.info(s"storing envelope (public_id=${id}; party=${e.party}")
+            db.storeEnvelope(e)
+          }
+        }
+
+        case Failure(th) => {
+          Logger.error("failed to find document")
+        }
+      }
     }
   }
 }
