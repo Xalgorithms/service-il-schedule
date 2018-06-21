@@ -43,17 +43,19 @@ class MessagesActor extends Actor with ActorLogging {
     _cfg.asJava
   )
 
-  val topic = "xadf.test"
-
   def receive = {
     case GlobalMessages.DocumentAdded(id) => {
-      log.debug(s"# sending message (topic=${topic}; id=${id})")
-      _producer.send(new ProducerRecord(topic, id))
-      log.debug(s"> sent message (topic=${topic}; id=${id})")
+      send(id, "il.compute.execute")
     }
 
     case GlobalMessages.TestRunRequested(id) => {
-      log.debug(s"requesting a test run (id=${id})")
+      send(id, "il.verify.rule_execution")
     }
+  }
+
+  private def send(id: String, topic: String) = {
+      log.debug(s"# sending message (topic=${topic}; id=${id})")
+      _producer.send(new ProducerRecord(topic, id))
+      log.debug(s"> sent message (topic=${topic}; id=${id})")
   }
 }
