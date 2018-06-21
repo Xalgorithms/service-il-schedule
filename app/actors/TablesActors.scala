@@ -31,7 +31,7 @@ import scala.util.{ Success, Failure }
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import models.{ DocumentEnvelope, Envelope, InterlibrDatabase, ConnectedInterlibrDatabase }
-import services.{ Mongo }
+import services.{ Mongo, MongoActions }
 
 class TablesActor @Inject() (mongo: Mongo) extends Actor with ActorLogging {
   val db: InterlibrDatabase = ConnectedInterlibrDatabase
@@ -39,7 +39,7 @@ class TablesActor @Inject() (mongo: Mongo) extends Actor with ActorLogging {
   def receive = {
     case GlobalMessages.DocumentAdded(id) => {
       log.info(s"document added (id=${id})")
-      mongo.find_one(id).onComplete {
+      mongo.find_one(MongoActions.FindDocumentById(id)).onComplete {
         case Success(doc) => {
           log.info(s"found document (public_id=${id})")
           val de = new DocumentEnvelope(id, doc)

@@ -38,47 +38,78 @@ import scala.concurrent.{ Future, Promise }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
+object MongoActions {
+  abstract class Store() {
+    def document : Document
+    def id: String
+  }
+
+  case class StoreDocument(doc: BsonDocument) extends Store {
+    private val public_id = randomUUID.toString()
+
+    def this(doc: JsObject) = this(BsonDocument(doc.toString()))
+
+    def document: Document = {
+      Document("public_id" -> public_id, "content" -> doc)
+    }
+
+    def id = public_id
+  }
+
+  case class StoreTestRun(rule_id: String, ctx: BsonDocument) extends Store {
+    private val request_id = randomUUID.toString()
+
+    def this(rule_id: String, ctx: JsObject) = this(rule_id, BsonDocument(ctx.toString()))
+
+    def document: Document = {
+      Document("rule_id" -> rule_id, "request_id" -> request_id, "context" -> ctx)
+    }
+
+    def id = request_id
+  }
+
+  class FindOne()
+  case class FindByKey(cn: String, key: String, value: String) extends FindOne
+
+  object FindDocumentById {
+    def apply(id: String) = FindByKey("documents", "public_id", id)
+  }
+}
+
 class Mongo @Inject() {
   val url = sys.env.get("MONGO_URL").getOrElse("mongodb://127.0.0.1:27017/")
   val cl = MongoClient(url)
   val db = cl.getDatabase("xadf")
 
-  def find_one(public_id: String): Future[BsonDocument] = {
+  def find_one(op: MongoActions.FindOne): Future[BsonDocument] = {
     val pr = Promise[BsonDocument]()
-    db.getCollection("documents").find(equal("public_id", public_id)).first().subscribe(
-      (doc: Document) => pr.success(doc.toBsonDocument)
-    )
+
+    op match {
+      case MongoActions.FindByKey(cn, key, value) => {
+        db.getCollection(cn).find(equal(key, value)).first().subscribe(
+          (doc: Document) => pr.success(doc.toBsonDocument)
+        )
+      }
+    }
+
     pr.future
   }
 
-  def store_document(doc: JsObject): Future[String] = {
-    val public_id = randomUUID.toString()
+  def store(op: MongoActions.Store): Future[String] = {
+    val pr = Promise[String]()
+    val cn = op match {
+      case MongoActions.StoreDocument(_) => "documents"
+      case MongoActions.StoreTestRun(_, _)  => "test-runs"
+    }
 
-    store("documents", Document(
-      "public_id" -> public_id,
-      "content"   -> BsonDocument(doc.toString())
-    )).map { _ => public_id }
-  }
-
-  def store_test_run(rule_id: String, request_id: String, ctx: JsObject): Future[Unit] = {
-    store("test-runs", Document(
-      "rule_id" -> rule_id,
-      "request_id" -> request_id,
-      "context" -> BsonDocument(ctx.toString())
-    ))
-  }
-
-  private def store(cn: String, doc: Document): Future[Unit] = {
-    val pr = Promise[Unit]()
-
-    db.getCollection(cn).insertOne(doc).subscribe(new Observer[Completed] {
+    db.getCollection(cn).insertOne(op.document).subscribe(new Observer[Completed] {
       override def onComplete(): Unit = {
         PlayLogger.debug(s"insert completed")
       }
 
       override def onNext(res: Completed): Unit = {
         PlayLogger.debug(s"insert next")
-        pr.success(None)
+        pr.success(op.id)
       }
 
       override def onError(th: Throwable): Unit = {

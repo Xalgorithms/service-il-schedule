@@ -29,7 +29,7 @@ import play.api.libs.json._
 import scala.collection.immutable
 import scala.util.{ Success, Failure }
 
-import services.{ Mongo }
+import services.{ Mongo, MongoActions }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -44,7 +44,7 @@ class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends
   def receive = {
     case StoreDocument(doc) => {
       val them = sender()
-      mongo.store_document(doc).onComplete {
+      mongo.store(new MongoActions.StoreDocument(doc)).onComplete {
         case Success(public_id) => {
           log.debug(s"stored (public_id=${public_id})")
           publish.publish_global(GlobalMessages.DocumentAdded(public_id))
@@ -57,10 +57,9 @@ class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends
     }
 
     case StoreTestRun(rule_id, doc) => {
-      val request_id = randomUUID.toString()
       val them = sender()
-      mongo.store_test_run(rule_id, request_id, doc).onComplete {
-        case Success(_) => {
+      mongo.store(new MongoActions.StoreTestRun(rule_id, doc)).onComplete {
+        case Success(request_id) => {
           log.debug(s"stored test run (request_id=${request_id})")
           publish.publish_global(GlobalMessages.TestRunRequested(request_id))
           them ! request_id
@@ -70,7 +69,6 @@ class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends
           log.error("failed store")
         }
       }
-      sender() ! request_id
     }
   }
 
