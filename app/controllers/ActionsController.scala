@@ -38,7 +38,7 @@ import ExecutionContext.Implicits.global
 
 import actors.DocumentsActor
 
-case class AppAction(name: String, payload: JsObject)
+case class AppAction(name: String, args: Map[String, String], payload: JsObject)
 
 @Singleton
 class ActionsController @Inject()(
@@ -47,6 +47,7 @@ class ActionsController @Inject()(
 ) extends AbstractController(cc) {
   implicit val app_action_read: Reads[AppAction] = (
     (JsPath \ "name").read[String] and
+    (JsPath \ "args").read[Map[String, String]] and
     (JsPath \ "payload").read[JsObject]
   )(AppAction.apply _)
 
@@ -62,9 +63,30 @@ class ActionsController @Inject()(
 
     Logger.debug(s"received: create (action=${act.name})")
 
-    (actor_docs ? DocumentsActor.StoreDocument(act.payload)).mapTo[String].map { public_id =>
-      Logger.debug(s"documents responded (public_id=${public_id}")
-      Ok(Json.obj("status" -> "ok", "public_id" -> public_id))
+    act.name match {
+      case "execute" => {
+        Logger.debug("running execute")
+        (actor_docs ? DocumentsActor.StoreDocument(act.payload)).mapTo[String].map { public_id =>
+          Logger.debug(s"documents responded (public_id=${public_id})")
+          Ok(Json.obj("status" -> "ok", "public_id" -> public_id))
+        }
+      }
+
+      case "test-rule" => {
+        act.args.get("rule_id") match {
+          case Some(rule_id) => {
+            Logger.debug(s"running test-rule (id=${rule_id})")
+            (actor_docs ? DocumentsActor.StoreTestRun(rule_id, act.payload)).mapTo[String].map { request_id =>
+              Logger.debug(s"documents responded (request_id=${request_id})")
+              Ok(Json.obj("status" -> "ok", "request_id" -> request_id))
+            }
+          }
+          case None => {
+            Logger.warn("no rule_id specified")
+            Future.successful(Forbidden(Json.obj("status" -> "failure_missing_rule_id")))
+          }
+        }
+      }
     }
   }
 }

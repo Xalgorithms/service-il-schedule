@@ -23,7 +23,7 @@
 package services
 
 import java.util.UUID.randomUUID
-
+import javax.inject._
 import org.mongodb.scala.bson.{ BsonDocument }
 import org.mongodb.scala._
 import org.mongodb.scala.model.Aggregates._
@@ -32,47 +32,57 @@ import org.mongodb.scala.model.Projections._
 import org.mongodb.scala.model.Sorts._
 import org.mongodb.scala.model.Updates._
 import org.mongodb.scala.model._
+import play.api.{ Logger => PlayLogger }
 import play.api.libs.json._
 import scala.concurrent.{ Future, Promise }
 
-class Mongo(logger: Logger = new LocalLogger()) {
+import scala.concurrent.ExecutionContext.Implicits.global
+
+class Mongo @Inject() {
   val url = sys.env.get("MONGO_URL").getOrElse("mongodb://127.0.0.1:27017/")
   val cl = MongoClient(url)
   val db = cl.getDatabase("xadf")
 
-  private def documents(): MongoCollection[Document] = {
-    db.getCollection("documents")
-  }
-
   def find_one(public_id: String): Future[BsonDocument] = {
     val pr = Promise[BsonDocument]()
-    documents().find(equal("public_id", public_id)).first().subscribe(
+    db.getCollection("documents").find(equal("public_id", public_id)).first().subscribe(
       (doc: Document) => pr.success(doc.toBsonDocument)
     )
     pr.future
   }
 
-  def store(doc: JsObject): Future[String] = {
-    val pr = Promise[String]()
-
+  def store_document(doc: JsObject): Future[String] = {
     val public_id = randomUUID.toString()
-    documents().insertOne(
-      Document(
-        "public_id" -> public_id,
-        "content"   -> BsonDocument(doc.toString())
-      )
-    ).subscribe(new Observer[Completed]() {
+
+    store("documents", Document(
+      "public_id" -> public_id,
+      "content"   -> BsonDocument(doc.toString())
+    )).map { _ => public_id }
+  }
+
+  def store_test_run(rule_id: String, request_id: String, ctx: JsObject): Future[Unit] = {
+    store("test-runs", Document(
+      "rule_id" -> rule_id,
+      "request_id" -> request_id,
+      "context" -> BsonDocument(ctx.toString())
+    ))
+  }
+
+  private def store(cn: String, doc: Document): Future[Unit] = {
+    val pr = Promise[Unit]()
+
+    db.getCollection(cn).insertOne(doc).subscribe(new Observer[Completed] {
       override def onComplete(): Unit = {
-        logger.debug(s"insert completed (public_id=${public_id})")
+        PlayLogger.debug(s"insert completed")
       }
 
       override def onNext(res: Completed): Unit = {
-        logger.debug(s"insert next (public_id=${public_id})")
-        pr.success(public_id)
+        PlayLogger.debug(s"insert next")
+        pr.success(None)
       }
 
       override def onError(th: Throwable): Unit = {
-        logger.error(s"failed insert, trigging promise (public_id=${public_id})")
+        PlayLogger.error(s"failed insert, trigging promise")
         pr.failure(th)
       }
     })

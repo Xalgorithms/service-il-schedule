@@ -22,10 +22,10 @@
 // <http://www.gnu.org/licenses/>.
 package actors
 
-import javax.inject._
 import akka.actor._
+import java.util.UUID.randomUUID
+import javax.inject._
 import play.api.libs.json._
-import play.api.Logger
 import scala.collection.immutable
 import scala.util.{ Success, Failure }
 
@@ -35,27 +35,45 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object DocumentsActor {
   case class StoreDocument(doc: JsObject)
+  case class StoreTestRun(rule_id: String, ctx: JsObject)
 }
 
-class DocumentsActor @Inject() (publish: services.Publish) extends Actor {
+class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends Actor with ActorLogging {
   import DocumentsActor._
 
-  private var _mongo = new Mongo()
-
   def receive = {
-    case StoreDocument(doc) => store(doc, sender())
+    case StoreDocument(doc) => {
+      val them = sender()
+      mongo.store_document(doc).onComplete {
+        case Success(public_id) => {
+          log.debug(s"stored (public_id=${public_id})")
+          publish.publish_global(GlobalMessages.DocumentAdded(public_id))
+          them ! public_id
+        }
+        case Failure(th) => {
+          log.error(s"failed store")
+        }
+      }
+    }
+
+    case StoreTestRun(rule_id, doc) => {
+      val request_id = randomUUID.toString()
+      val them = sender()
+      mongo.store_test_run(rule_id, request_id, doc).onComplete {
+        case Success(_) => {
+          log.debug(s"stored test run (request_id=${request_id})")
+          publish.publish_global(GlobalMessages.TestRunRequested(request_id))
+          them ! request_id
+        }
+
+        case Failure(th) => {
+          log.error("failed store")
+        }
+      }
+      sender() ! request_id
+    }
   }
 
   def store(doc: JsObject, sender: ActorRef): Unit = {
-    _mongo.store(doc).onComplete {
-      case Success(public_id) => {
-        Logger.debug(s"stored (public_id=${public_id})")
-        publish.publish_global(GlobalMessages.DocumentAdded(public_id))
-        sender ! public_id
-      }
-      case Failure(th) => {
-        Logger.error(s"failed store")
-      }
-    }
   }
 }
