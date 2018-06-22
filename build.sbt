@@ -31,6 +31,7 @@ lazy val VERSION_SCALA_ISO         = "0.1.2"
 lazy val VERSION_PHANTOM           = "2.24.0"
 lazy val VERSION_JODA              = "2.10"
 lazy val VERSION_JODA_CONVERT      = "2.1"
+lazy val VERSION_AVRO4S            = "1.9.0"
 
 lazy val meta = Seq(
   name := """interlibr-service-schedule""",
@@ -41,6 +42,7 @@ lazy val meta = Seq(
 
 lazy val lib_deps = Seq(
   guice,
+  "com.sksamuel.avro4s"    %% "avro4s-core"             % VERSION_AVRO4S,
   "org.mongodb.scala"      %% "mongo-scala-driver"      % VERSION_MONGO_SCALA,
   "com.typesafe.akka"      %% "akka-stream-kafka"       % VERSION_AKKA_STREAM_KAFKA,
   "com.datastax.cassandra" %  "cassandra-driver-core"   % VERSION_CASSANDRA,

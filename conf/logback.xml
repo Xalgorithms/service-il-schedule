@@ -38,4 +38,8 @@
     <appender-ref ref="ASYNCSTDOUT" />
   </root>
 
+  <logger name="akka" level="INFO" />
+  <logger name="actors.TablesActor" level="DEBUG" />
+  <logger name="actors.DocumentsActor" level="DEBUG" />
+  <logger name="actors.MessagesActor" level="DEBUG" />
 </configuration>

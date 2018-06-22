@@ -23,7 +23,7 @@
 package services
 
 import java.util.UUID.randomUUID
-
+import javax.inject._
 import org.mongodb.scala.bson.{ BsonDocument }
 import org.mongodb.scala._
 import org.mongodb.scala.model.Aggregates._
@@ -32,47 +32,88 @@ import org.mongodb.scala.model.Projections._
 import org.mongodb.scala.model.Sorts._
 import org.mongodb.scala.model.Updates._
 import org.mongodb.scala.model._
+import play.api.{ Logger => PlayLogger }
 import play.api.libs.json._
 import scala.concurrent.{ Future, Promise }
 
-class Mongo(logger: Logger = new LocalLogger()) {
+import scala.concurrent.ExecutionContext.Implicits.global
+
+object MongoActions {
+  abstract class Store() {
+    def document : Document
+    def id: String
+  }
+
+  case class StoreDocument(doc: BsonDocument) extends Store {
+    private val public_id = randomUUID.toString()
+
+    def this(doc: JsObject) = this(BsonDocument(doc.toString()))
+
+    def document: Document = {
+      Document("public_id" -> public_id, "content" -> doc)
+    }
+
+    def id = public_id
+  }
+
+  case class StoreTestRun(rule_id: String, ctx: BsonDocument) extends Store {
+    private val request_id = randomUUID.toString()
+
+    def this(rule_id: String, ctx: JsObject) = this(rule_id, BsonDocument(ctx.toString()))
+
+    def document: Document = {
+      Document("rule_id" -> rule_id, "request_id" -> request_id, "context" -> ctx)
+    }
+
+    def id = request_id
+  }
+
+  class FindOne()
+  case class FindByKey(cn: String, key: String, value: String) extends FindOne
+
+  object FindDocumentById {
+    def apply(id: String) = FindByKey("documents", "public_id", id)
+  }
+}
+
+class Mongo @Inject() {
   val url = sys.env.get("MONGO_URL").getOrElse("mongodb://127.0.0.1:27017/")
   val cl = MongoClient(url)
   val db = cl.getDatabase("xadf")
 
-  private def documents(): MongoCollection[Document] = {
-    db.getCollection("documents")
-  }
-
-  def find_one(public_id: String): Future[BsonDocument] = {
+  def find_one(op: MongoActions.FindOne): Future[BsonDocument] = {
     val pr = Promise[BsonDocument]()
-    documents().find(equal("public_id", public_id)).first().subscribe(
-      (doc: Document) => pr.success(doc.toBsonDocument)
-    )
+
+    op match {
+      case MongoActions.FindByKey(cn, key, value) => {
+        db.getCollection(cn).find(equal(key, value)).first().subscribe(
+          (doc: Document) => pr.success(doc.toBsonDocument)
+        )
+      }
+    }
+
     pr.future
   }
 
-  def store(doc: JsObject): Future[String] = {
+  def store(op: MongoActions.Store): Future[String] = {
     val pr = Promise[String]()
+    val cn = op match {
+      case MongoActions.StoreDocument(_) => "documents"
+      case MongoActions.StoreTestRun(_, _)  => "test-runs"
+    }
 
-    val public_id = randomUUID.toString()
-    documents().insertOne(
-      Document(
-        "public_id" -> public_id,
-        "content"   -> BsonDocument(doc.toString())
-      )
-    ).subscribe(new Observer[Completed]() {
+    db.getCollection(cn).insertOne(op.document).subscribe(new Observer[Completed] {
       override def onComplete(): Unit = {
-        logger.debug(s"insert completed (public_id=${public_id})")
+        PlayLogger.debug(s"insert completed")
       }
 
       override def onNext(res: Completed): Unit = {
-        logger.debug(s"insert next (public_id=${public_id})")
-        pr.success(public_id)
+        PlayLogger.debug(s"insert next")
+        pr.success(op.id)
       }
 
       override def onError(th: Throwable): Unit = {
-        logger.error(s"failed insert, trigging promise (public_id=${public_id})")
+        PlayLogger.error(s"failed insert, trigging promise")
         pr.failure(th)
       }
     })
