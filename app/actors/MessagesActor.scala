@@ -23,25 +23,58 @@
 package actors
 
 import akka.actor._
+import akka.kafka.ProducerSettings
+import akka.kafka.scaladsl.{ Producer }
+import akka.stream.{ ActorMaterializer, OverflowStrategy }
+import akka.stream.scaladsl.{ Flow, Source }
+import com.sksamuel.avro4s.{ AvroOutputStream }
 import javax.inject._
-import org.apache.kafka.clients.producer.{ KafkaProducer, ProducerRecord }
-import scala.collection.JavaConverters._
+import java.io.ByteArrayOutputStream
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.StringSerializer
 
 object MessagesActor {
   def props = Props[MessagesActor]
 }
 
-class MessagesActor extends Actor with ActorLogging {
-  private val _cfg: Map[String, Object] = Map(
-    "key.serializer" -> "org.apache.kafka.common.serialization.StringSerializer",
-    "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer",
-    "client.id" -> "services-schedule",
-    "bootstrap.servers" -> "localhost:9092"
-  )
+object Triggers {
+  abstract class Trigger
+  case class TriggerById(id: String) extends Trigger
 
-  private val _producer: KafkaProducer[String, String] = new KafkaProducer[String, String](
-    _cfg.asJava
-  )
+  case class InvokeTrigger(topic: String, trigger: Trigger)
+}
+
+class MessagesActor extends Actor with ActorLogging {
+  implicit val materializer = ActorMaterializer()
+
+  import Triggers._
+
+  private val settings = ProducerSettings(
+    context.system, new StringSerializer, new StringSerializer
+  ).withBootstrapServers("localhost:9092")
+
+  private val _source = Source.queue[InvokeTrigger](5, OverflowStrategy.backpressure)
+  private val _flow_avro = Flow[InvokeTrigger].map { o =>
+    val os = new ByteArrayOutputStream()
+
+    o.trigger match {
+      case (tr: TriggerById) => {
+        val avo = AvroOutputStream.json[TriggerById](os)
+        avo.write(tr)
+        avo.close()
+      }
+    }
+
+    val rv = os.toString
+    os.close
+
+    (o.topic, rv)
+  }
+  private val _flow_record = Flow[(String, String)].map { case (topic, payload) =>
+    new ProducerRecord[String, String](topic, payload)
+  }
+
+  val _triggers = _source.via(_flow_avro).via(_flow_record).to(Producer.plainSink(settings)).run()
 
   def receive = {
     case GlobalMessages.DocumentAdded(id) => {
@@ -54,8 +87,8 @@ class MessagesActor extends Actor with ActorLogging {
   }
 
   private def send(id: String, topic: String) = {
-      log.debug(s"# sending message (topic=${topic}; id=${id})")
-      _producer.send(new ProducerRecord(topic, id))
-      log.debug(s"> sent message (topic=${topic}; id=${id})")
+    log.debug(s"# sending message (topic=${topic}; id=${id})")
+    _triggers.offer(InvokeTrigger(topic, TriggerById(id)))
+    log.debug(s"> sent message (topic=${topic}; id=${id})")
   }
 }
