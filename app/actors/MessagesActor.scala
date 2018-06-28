@@ -32,6 +32,7 @@ import javax.inject._
 import java.io.ByteArrayOutputStream
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
+import scala.util.Properties
 
 object MessagesActor {
   def props = Props[MessagesActor]
@@ -51,7 +52,7 @@ class MessagesActor extends Actor with ActorLogging {
 
   private val settings = ProducerSettings(
     context.system, new StringSerializer, new StringSerializer
-  ).withBootstrapServers("localhost:9092")
+  ).withBootstrapServers(Properties.envOrElse("KAFKA_BROKER", "localhost:9092"))
 
   private val _source = Source.queue[InvokeTrigger](5, OverflowStrategy.backpressure)
   private val _flow_avro = Flow[InvokeTrigger].map { o =>
