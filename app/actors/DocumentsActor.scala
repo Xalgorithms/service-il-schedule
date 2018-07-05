@@ -29,7 +29,7 @@ import play.api.libs.json._
 import scala.collection.immutable
 import scala.util.{ Success, Failure }
 
-import services.{ Mongo, MongoActions }
+import services.{ Documents, Mongo, MongoActions }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -57,9 +57,9 @@ class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends
       }
     }
 
-    case StoreAdhocExecution(rule_id, doc) => {
+    case StoreAdhocExecution(rule_id, ctx) => {
       val them = sender()
-      mongo.store(new MongoActions.StoreExecution(rule_id, doc)).onComplete {
+      mongo.store(new MongoActions.StoreExecution(rule_id, ctx)).onComplete {
         case Success(request_id) => {
           log.debug(s"stored execution (request_id=${request_id})")
           publish.publish_global(GlobalMessages.TestRunAdded(request_id))
@@ -68,6 +68,37 @@ class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends
 
         case Failure(th) => {
           log.error("failed store")
+        }
+      }
+    }
+
+    case StoreExecution(rule_ref, ctx) => {
+      val them = sender()
+      log.info("locating rule by reference")
+      mongo.find_one(MongoActions.FindRuleByReference(rule_ref)).onComplete {
+        case Success(rule_doc) => {
+          log.info("found corresponding rule document")
+          Documents.maybe_find_text(rule_doc, "public_id") match {
+            case Some(public_id) => {
+              log.info(s"storing execution of rule (id=#{public_id})")
+              mongo.store(new MongoActions.StoreExecution(public_id, ctx)).onComplete {
+                case Success(request_id) => {
+                  log.debug(s"stored execution (request_id=${request_id})")
+                  publish.publish_global(GlobalMessages.TestRunAdded(request_id))
+                  them ! request_id
+                }
+                case Failure(th) => {
+                  log.error("failed store")
+                }
+              }
+            }
+            case None => {
+              log.error(s"failed to find id")
+            }
+          }
+        }
+        case Failure(th) => {
+          log.error(s"failed to find document using ref (ref=#{rule_ref})")
         }
       }
     }

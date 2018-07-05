@@ -74,6 +74,25 @@ object MongoActions {
   object FindDocumentById {
     def apply(id: String) = FindByKey("documents", "public_id", id)
   }
+
+  object FindDocumentByReference {
+    def apply(cn: String, t: String, ref: String): FindOne = {
+      val k = play.api.libs.Codecs.sha1(s"${t}(${ref})".getBytes)
+      FindByKey(cn, "public_id", k)
+    }
+  }
+
+  object FindTableByReference {
+    def apply(ref: String): FindOne = {
+      FindDocumentByReference("tables", "T", ref)
+    }
+  }
+
+  object FindRuleByReference {
+    def apply(ref: String): FindOne = {
+      FindDocumentByReference("rules", "R", ref)
+    }
+  }
 }
 
 class Mongo @Inject() {
@@ -86,6 +105,7 @@ class Mongo @Inject() {
 
     op match {
       case MongoActions.FindByKey(cn, key, value) => {
+        println(s"looking for document (cn=${cn}; key=${key}; value=${value})")
         db.getCollection(cn).find(equal(key, value)).first().subscribe(
           (doc: Document) => pr.success(doc.toBsonDocument)
         )
