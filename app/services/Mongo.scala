@@ -56,7 +56,7 @@ object MongoActions {
     def id = public_id
   }
 
-  case class StoreTestRun(rule_id: String, ctx: BsonDocument) extends Store {
+  case class StoreExecution(rule_id: String, ctx: BsonDocument) extends Store {
     private val request_id = randomUUID.toString()
 
     def this(rule_id: String, ctx: JsObject) = this(rule_id, BsonDocument(ctx.toString()))
@@ -99,7 +99,7 @@ class Mongo @Inject() {
     val pr = Promise[String]()
     val cn = op match {
       case MongoActions.StoreDocument(_) => "documents"
-      case MongoActions.StoreTestRun(_, _)  => "test-runs"
+      case MongoActions.StoreExecution(_, _)  => "executions"
     }
 
     db.getCollection(cn).insertOne(op.document).subscribe(new Observer[Completed] {

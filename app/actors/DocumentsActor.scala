@@ -35,7 +35,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object DocumentsActor {
   case class StoreDocument(doc: JsObject)
-  case class StoreTestRun(rule_id: String, ctx: JsObject)
+  case class StoreAdhocExecution(rule_id: String, ctx: JsObject)
+  case class StoreExecution(rule_ref: String, ctx: JsObject)
 }
 
 class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends Actor with ActorLogging {
@@ -56,12 +57,12 @@ class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends
       }
     }
 
-    case StoreTestRun(rule_id, doc) => {
+    case StoreAdhocExecution(rule_id, doc) => {
       val them = sender()
-      mongo.store(new MongoActions.StoreTestRun(rule_id, doc)).onComplete {
+      mongo.store(new MongoActions.StoreExecution(rule_id, doc)).onComplete {
         case Success(request_id) => {
-          log.debug(s"stored test run (request_id=${request_id})")
-          publish.publish_global(GlobalMessages.TestRunRequested(request_id))
+          log.debug(s"stored execution (request_id=${request_id})")
+          publish.publish_global(GlobalMessages.TestRunAdded(request_id))
           them ! request_id
         }
 

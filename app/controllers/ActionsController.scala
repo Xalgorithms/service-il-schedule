@@ -58,35 +58,59 @@ class ActionsController @Inject()(
      _.validate[A].asEither.left.map(e => BadRequest(JsError.toJson(e)))
   )
 
+  def apply_execute(args: Map[String, String], payload: JsObject): Future[Result] = {
+    Logger.info("storing incoming document")
+    (actor_docs ? DocumentsActor.StoreDocument(payload)).mapTo[String].map { public_id =>
+      Logger.debug(s"document was stored (public_id=${public_id})")
+      Ok(Json.obj("status" -> "ok", "public_id" -> public_id))
+    }
+  }
+
+  def apply_execute_rule_adhoc(args: Map[String, String], payload: JsObject): Future[Result] = {
+    args.get("rule_id") match {
+      case Some(rule_id) => {
+        Logger.debug(s"running adhoc rule (id=${rule_id})")
+        (actor_docs ? DocumentsActor.StoreAdhocExecution(rule_id, payload)).mapTo[String].map { request_id =>
+          Logger.debug(s"documents responded (request_id=${request_id})")
+          Ok(Json.obj("status" -> "ok", "request_id" -> request_id))
+        }
+      }
+      case None => {
+        Logger.warn("no rule_id specified")
+        Future.successful(Forbidden(Json.obj("status" -> "failure_missing_rule_id")))
+      }
+    }
+  }
+
+  def apply_execute_rule_by_ref(args: Map[String, String], payload: JsObject): Future[Result] = {
+    args.get("rule_reference") match {
+      case Some(ref) => {
+        Logger.debug(s"running rule (ref=${ref})")
+        (actor_docs ? DocumentsActor.StoreExecution(ref, payload)).mapTo[String].map { request_id =>
+          Logger.debug(s"documents responded (request_id=${request_id})")
+          Ok(Json.obj("status" -> "ok", "request_id" -> request_id))
+        }
+      }
+      case None => {
+        Logger.warn("no reference specified")
+        Future.successful(Forbidden(Json.obj("status" -> "failure_missing_rule_reference")))
+      }
+    }
+  }
+
+  private val actions = Map(
+    "execute"             -> (apply_execute _),
+    "execute_rule_adhoc"  -> (apply_execute_rule_adhoc _),
+    "execute_rule_by_ref" -> (apply_execute_rule_by_ref _)
+  )
+
   def create() = Action.async(validate_json) { request =>
     val act = request.body
 
     Logger.debug(s"received: create (action=${act.name})")
-
-    act.name match {
-      case "execute" => {
-        Logger.debug("running execute")
-        (actor_docs ? DocumentsActor.StoreDocument(act.payload)).mapTo[String].map { public_id =>
-          Logger.debug(s"documents responded (public_id=${public_id})")
-          Ok(Json.obj("status" -> "ok", "public_id" -> public_id))
-        }
-      }
-
-      case "test-rule" => {
-        act.args.get("rule_id") match {
-          case Some(rule_id) => {
-            Logger.debug(s"running test-rule (id=${rule_id})")
-            (actor_docs ? DocumentsActor.StoreTestRun(rule_id, act.payload)).mapTo[String].map { request_id =>
-              Logger.debug(s"documents responded (request_id=${request_id})")
-              Ok(Json.obj("status" -> "ok", "request_id" -> request_id))
-            }
-          }
-          case None => {
-            Logger.warn("no rule_id specified")
-            Future.successful(Forbidden(Json.obj("status" -> "failure_missing_rule_id")))
-          }
-        }
-      }
+    actions.get(act.name) match {
+      case Some(fn) => fn(act.args, act.payload)
+      case None => Future.successful(NotFound(Json.obj("status" -> "failure_unknown_action")))
     }
   }
 }

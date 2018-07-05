@@ -1,5 +1,5 @@
 {
-  "name" : "test-rule",
+  "name" : "execute_rule_adhoc",
   "args" : {
     "rule_id" : "1234"
   },

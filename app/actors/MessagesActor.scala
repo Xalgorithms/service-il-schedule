@@ -82,7 +82,7 @@ class MessagesActor extends Actor with ActorLogging {
       send(id, "il.compute.execute")
     }
 
-    case GlobalMessages.TestRunRequested(id) => {
+    case GlobalMessages.TestRunAdded(id) => {
       send(id, "il.verify.rule_execution")
     }
   }
