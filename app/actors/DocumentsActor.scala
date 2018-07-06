@@ -29,7 +29,11 @@ import play.api.libs.json._
 import scala.collection.immutable
 import scala.util.{ Success, Failure }
 
-import services.{ Documents, Mongo, MongoActions }
+// ours
+import org.xalgorithms.storage.bson.Find
+
+// local
+import services.{ Mongo, MongoActions }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -78,7 +82,7 @@ class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends
       mongo.find_one(MongoActions.FindRuleByReference(rule_ref)).onComplete {
         case Success(rule_doc) => {
           log.info("found corresponding rule document")
-          Documents.maybe_find_text(rule_doc, "public_id") match {
+          Find.maybe_find_text(rule_doc, "public_id") match {
             case Some(public_id) => {
               log.info(s"storing execution of rule (id=#{public_id})")
               mongo.store(new MongoActions.StoreExecution(public_id, ctx)).onComplete {
