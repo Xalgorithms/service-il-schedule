@@ -37,7 +37,7 @@ lazy val VERSION_AVRO4S            = "1.9.0"
 lazy val VERSION_STORAGE           = "0.0.2"
 
 lazy val meta = Seq(
-  name := """interlibr-service-schedule""",
+  name := """service-il-schedule""",
   organization := "org.xalgorithms",
   version := "0.1.1",
   scalaVersion := VERSION_SCALA,
