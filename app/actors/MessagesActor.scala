@@ -45,9 +45,12 @@ class MessagesActor extends Actor with ActorLogging {
   import Actions.InvokeTrigger
   import Implicits.trigger_writes
 
+  private val broker = Properties.envOrElse("KAFKA_BROKER", "kafka:9092")
+  log.info(s"creating kafka settings (broker=${broker})")
+
   private val settings = ProducerSettings(
     context.system, new StringSerializer, new StringSerializer
-  ).withBootstrapServers(Properties.envOrElse("KAFKA_BROKER", "localhost:9092"))
+  ).withBootstrapServers(broker)
 
   private val _source = Source.queue[InvokeTrigger](5, OverflowStrategy.backpressure)
   private val _flow_json = Flow[InvokeTrigger].map { o =>
@@ -57,6 +60,7 @@ class MessagesActor extends Actor with ActorLogging {
     new ProducerRecord[String, String](topic, payload.toString)
   }
 
+  log.info("setting up stream")
   val _triggers = _source.via(_flow_json).via(_flow_record).to(Producer.plainSink(settings)).run()
 
   def receive = {

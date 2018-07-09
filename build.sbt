@@ -33,7 +33,7 @@ lazy val VERSION_JODA              = "2.10"
 lazy val VERSION_JODA_CONVERT      = "2.1"
 
 // ours
-lazy val VERSION_STORAGE           = "0.0.2"
+lazy val VERSION_STORAGE           = "0.0.3"
 
 lazy val meta = Seq(
   name := """service-il-schedule""",
