@@ -27,55 +27,37 @@ import akka.kafka.ProducerSettings
 import akka.kafka.scaladsl.{ Producer }
 import akka.stream.{ ActorMaterializer, OverflowStrategy }
 import akka.stream.scaladsl.{ Flow, Source }
-import com.sksamuel.avro4s.{ AvroOutputStream }
 import javax.inject._
 import java.io.ByteArrayOutputStream
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
+import play.api.libs.json._
 import scala.util.Properties
 
 object MessagesActor {
   def props = Props[MessagesActor]
 }
 
-object Triggers {
-  abstract class Trigger
-  case class TriggerById(id: String) extends Trigger
-
-  case class InvokeTrigger(topic: String, trigger: Trigger)
-}
-
 class MessagesActor extends Actor with ActorLogging {
   implicit val materializer = ActorMaterializer()
 
-  import Triggers._
+  import Triggers.TriggerById
+  import Actions.InvokeTrigger
+  import Implicits.trigger_writes
 
   private val settings = ProducerSettings(
     context.system, new StringSerializer, new StringSerializer
   ).withBootstrapServers(Properties.envOrElse("KAFKA_BROKER", "localhost:9092"))
 
   private val _source = Source.queue[InvokeTrigger](5, OverflowStrategy.backpressure)
-  private val _flow_avro = Flow[InvokeTrigger].map { o =>
-    val os = new ByteArrayOutputStream()
-
-    o.trigger match {
-      case (tr: TriggerById) => {
-        val avo = AvroOutputStream.json[TriggerById](os)
-        avo.write(tr)
-        avo.close()
-      }
-    }
-
-    val rv = os.toString
-    os.close
-
-    (o.topic, rv)
+  private val _flow_json = Flow[InvokeTrigger].map { o =>
+    (o.topic, Json.toJson(o.trigger))
   }
-  private val _flow_record = Flow[(String, String)].map { case (topic, payload) =>
-    new ProducerRecord[String, String](topic, payload)
+  private val _flow_record = Flow[(String, JsValue)].map { case (topic, payload) =>
+    new ProducerRecord[String, String](topic, payload.toString)
   }
 
-  val _triggers = _source.via(_flow_avro).via(_flow_record).to(Producer.plainSink(settings)).run()
+  val _triggers = _source.via(_flow_json).via(_flow_record).to(Producer.plainSink(settings)).run()
 
   def receive = {
     case GlobalMessages.DocumentAdded(id) => {
