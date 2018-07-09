@@ -34,7 +34,7 @@ lazy val VERSION_JODA_CONVERT      = "2.1"
 lazy val VERSION_AVRO4S            = "1.9.0"
 
 // ours
-lazy val VERSION_STORAGE           = "0.0.1"
+lazy val VERSION_STORAGE           = "0.0.2"
 
 lazy val meta = Seq(
   name := """interlibr-service-schedule""",
@@ -45,7 +45,7 @@ lazy val meta = Seq(
 
 lazy val lib_deps = Seq(
   guice,
-  "org.xalgorithms"        %% "il-storage"              % VERSION_STORAGE from s"https://github.com/Xalgorithms/lib-storage/releases/download/v${VERSION_STORAGE}/il-storage_2.11-${VERSION_STORAGE}.jar",
+  "org.xalgorithms"        %% "il-storage"              % VERSION_STORAGE from s"https://github.com/Xalgorithms/lib-storage/releases/download/v${VERSION_STORAGE}/il-storage_2.12-${VERSION_STORAGE}.jar",
   "com.sksamuel.avro4s"    %% "avro4s-core"             % VERSION_AVRO4S,
   "org.mongodb.scala"      %% "mongo-scala-driver"      % VERSION_MONGO_SCALA,
   "com.typesafe.akka"      %% "akka-stream-kafka"       % VERSION_AKKA_STREAM_KAFKA,

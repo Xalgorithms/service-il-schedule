@@ -28,18 +28,22 @@ import org.joda.time.DateTime
 import scala.concurrent.{Future => ScalaFuture}
 import scala.util.{ Success, Failure }
 
+// ours
+import org.xalgorithms.storage.data.{ MongoActions }
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
+// local
 import models.{ DocumentEnvelope, Envelope, InterlibrDatabase, ConnectedInterlibrDatabase }
-import services.{ Mongo, MongoActions }
+import services.{ InjectableMongo }
 
-class TablesActor @Inject() (mongo: Mongo) extends Actor with ActorLogging {
+class TablesActor @Inject() (mongo: InjectableMongo) extends Actor with ActorLogging {
   val db: InterlibrDatabase = ConnectedInterlibrDatabase
 
   def receive = {
     case GlobalMessages.DocumentAdded(id) => {
       log.info(s"document added (id=${id})")
-      mongo.find_one(MongoActions.FindDocumentById(id)).onComplete {
+      mongo.find_one_bson(MongoActions.FindDocumentById(id)).onComplete {
         case Success(doc) => {
           log.info(s"found document (public_id=${id})")
           val de = new DocumentEnvelope(id, doc)

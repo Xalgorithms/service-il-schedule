@@ -23,15 +23,10 @@
 package services
 
 import javax.inject._
-import play.api.{ Logger => PlayLogger }
 
-abstract class Logger @Inject() {
-  def debug(m: String)
-  def error(m: String)
-}
+// ours
+import org.xalgorithms.storage.data.Mongo
 
 @Singleton
-class LocalLogger @Inject() extends Logger {
-  def debug(m: String) = { PlayLogger.debug(m) }
-  def error(m: String) = { PlayLogger.error(m) }
+class InjectableMongo extends Mongo(new LocalLogger()) {
 }

@@ -31,9 +31,10 @@ import scala.util.{ Success, Failure }
 
 // ours
 import org.xalgorithms.storage.bson.Find
+import org.xalgorithms.storage.data.{ MongoActions }
 
 // local
-import services.{ Mongo, MongoActions }
+import services.InjectableMongo
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -43,7 +44,7 @@ object DocumentsActor {
   case class StoreExecution(rule_ref: String, ctx: JsObject)
 }
 
-class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends Actor with ActorLogging {
+class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publish) extends Actor with ActorLogging {
   import DocumentsActor._
 
   def receive = {
@@ -79,7 +80,7 @@ class DocumentsActor @Inject() (mongo: Mongo, publish: services.Publish) extends
     case StoreExecution(rule_ref, ctx) => {
       val them = sender()
       log.info("locating rule by reference")
-      mongo.find_one(MongoActions.FindRuleByReference(rule_ref)).onComplete {
+      mongo.find_one_bson(MongoActions.FindRuleByReference(rule_ref)).onComplete {
         case Success(rule_doc) => {
           log.info("found corresponding rule document")
           Find.maybe_find_text(rule_doc, "public_id") match {
