@@ -39,7 +39,7 @@ lazy val VERSION_STORAGE           = "0.0.2"
 lazy val meta = Seq(
   name := """interlibr-service-schedule""",
   organization := "org.xalgorithms",
-  version := "0.1.0",
+  version := "0.1.1",
   scalaVersion := VERSION_SCALA,
 )
 
