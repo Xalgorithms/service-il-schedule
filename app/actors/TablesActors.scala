@@ -44,12 +44,18 @@ class TablesActor @Inject() (mongo: InjectableMongo) extends Actor with ActorLog
     case GlobalMessages.DocumentAdded(id) => {
       log.info(s"document added (id=${id})")
       mongo.find_one_bson(MongoActions.FindDocumentById(id)).onComplete {
-        case Success(doc) => {
-          log.info(s"found document (public_id=${id})")
-          val de = new DocumentEnvelope(id, doc)
-          de.rows.foreach { e =>
-            log.info(s"storing envelope (public_id=${id}; party=${e.party})")
-            db.storeEnvelope(e)
+        case Success(opt_doc) => {
+          opt_doc match {
+            case Some(doc) => {
+              log.info(s"found document (public_id=${id})")
+              val de = new DocumentEnvelope(id, doc)
+              de.rows.foreach { e =>
+                log.info(s"storing envelope (public_id=${id}; party=${e.party})")
+                db.storeEnvelope(e)
+              }
+            }
+
+            case None => log.info("no document found")
           }
         }
 

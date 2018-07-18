@@ -64,15 +64,17 @@ class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publis
 
     case StoreAdhocExecution(rule_id, ctx) => {
       val them = sender()
+      log.debug(s"storing adhoc execution (rule_id=${rule_id})")
       mongo.store(new MongoActions.StoreExecution(rule_id, ctx)).onComplete {
         case Success(request_id) => {
-          log.debug(s"stored execution (request_id=${request_id})")
+          log.debug(s"stored adhoc execution (request_id=${request_id})")
           publish.publish_global(GlobalMessages.TestRunAdded(request_id))
           them ! request_id
         }
 
         case Failure(th) => {
           log.error("failed store")
+          println(th)
         }
       }
     }
@@ -81,9 +83,14 @@ class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publis
       val them = sender()
       log.info("locating rule by reference")
       mongo.find_one_bson(MongoActions.FindRuleByReference(rule_ref)).onComplete {
-        case Success(rule_doc) => {
-          log.info("found corresponding rule document")
-          Find.maybe_find_text(rule_doc, "public_id") match {
+        case Success(opt_rule_doc) => {
+          (opt_rule_doc match {
+            case Some(rule_doc) => Find.maybe_find_text(rule_doc, "public_id")
+            case None => {
+              log.error(s"no document found (ref=${rule_ref})")
+              None
+            }
+          }) match {
             case Some(public_id) => {
               log.info(s"storing execution of rule (id=#{public_id})")
               mongo.store(new MongoActions.StoreExecution(public_id, ctx)).onComplete {
@@ -97,11 +104,10 @@ class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publis
                 }
               }
             }
-            case None => {
-              log.error(s"failed to find id")
-            }
+            case None => log.error("failed to get public_id")
           }
         }
+
         case Failure(th) => {
           log.error(s"failed to find document using ref (ref=#{rule_ref})")
         }

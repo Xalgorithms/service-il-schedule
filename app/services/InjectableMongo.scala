@@ -28,5 +28,5 @@ import javax.inject._
 import org.xalgorithms.storage.data.Mongo
 
 @Singleton
-class InjectableMongo extends Mongo(new LocalLogger()) {
+class InjectableMongo extends Mongo(new LocalLogger(), sys.env.get("MONGO_URL")) {
 }
