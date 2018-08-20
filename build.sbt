@@ -38,7 +38,7 @@ lazy val VERSION_STORAGE           = "0.0.5"
 lazy val meta = Seq(
   name := """service-il-schedule""",
   organization := "org.xalgorithms",
-  version := "0.1.3",
+  version := "0.1.4",
   scalaVersion := VERSION_SCALA,
 )
 
@@ -69,6 +69,10 @@ lazy val root = (project in file("."))
 dockerBaseImage := "openjdk:jre-alpine"
 dockerUsername := Some("xalgorithms")
   
+// this makes sure we don't generate /opt/docker/RUNNING_PID
+javaOptions in Universal ++= Seq(
+  "-Dpidfile.path=/dev/null"
+)
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "org.xalgorithms.controllers._"
 
