@@ -64,18 +64,18 @@ class MessagesActor extends Actor with ActorLogging {
   val _triggers = _source.via(_flow_json).via(_flow_record).to(Producer.plainSink(settings)).run()
 
   def receive = {
-    case GlobalMessages.DocumentAdded(id) => {
+    case GlobalMessages.SubmissionAdded(id) => {
       send(id, "il.compute.execute")
     }
 
-    case GlobalMessages.TestRunAdded(id) => {
+    case GlobalMessages.ExecutionAdded(id) => {
       send(id, "il.verify.rule_execution")
     }
   }
 
   private def send(id: String, topic: String) = {
-    log.debug(s"# sending message (topic=${topic}; id=${id})")
+    log.debug(s"> sending message (topic=${topic}; id=${id})")
     _triggers.offer(InvokeTrigger(topic, TriggerById(id)))
-    log.debug(s"> sent message (topic=${topic}; id=${id})")
+    log.debug(s"< sent message (topic=${topic}; id=${id})")
   }
 }

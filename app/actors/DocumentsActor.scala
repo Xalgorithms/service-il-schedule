@@ -39,21 +39,20 @@ import services.InjectableMongo
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object DocumentsActor {
-  case class StoreDocument(doc: JsObject)
-  case class StoreAdhocExecution(rule_id: String, ctx: JsObject)
-  case class StoreExecution(rule_ref: String, ctx: JsObject)
+  case class StoreSubmission(doc: JsObject)
+  case class StoreExecution(rule_id: String, opt_ctx: Option[JsObject])
 }
 
 class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publish) extends Actor with ActorLogging {
   import DocumentsActor._
 
   def receive = {
-    case StoreDocument(doc) => {
+    case StoreSubmission(doc) => {
       val them = sender()
       mongo.store(new MongoActions.StoreDocument(doc)).onComplete {
         case Success(public_id) => {
           log.debug(s"stored (public_id=${public_id})")
-          publish.publish_global(GlobalMessages.DocumentAdded(public_id))
+          publish.publish_global(GlobalMessages.SubmissionAdded(public_id))
           them ! public_id
         }
         case Failure(th) => {
@@ -62,13 +61,13 @@ class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publis
       }
     }
 
-    case StoreAdhocExecution(rule_id, ctx) => {
+    case StoreExecution(rule_id, opt_ctx) => {
       val them = sender()
-      log.debug(s"storing adhoc execution (rule_id=${rule_id})")
-      mongo.store(new MongoActions.StoreExecution(rule_id, ctx)).onComplete {
+      log.debug(s"storing execution (rule_id=${rule_id})")
+      mongo.store(new MongoActions.StoreExecution(rule_id, opt_ctx.getOrElse(Json.obj()))).onComplete {
         case Success(request_id) => {
-          log.debug(s"stored adhoc execution (request_id=${request_id})")
-          publish.publish_global(GlobalMessages.TestRunAdded(request_id))
+          log.debug(s"stored execution (request_id=${request_id})")
+          publish.publish_global(GlobalMessages.ExecutionAdded(request_id))
           them ! request_id
         }
 
@@ -78,43 +77,5 @@ class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publis
         }
       }
     }
-
-    case StoreExecution(rule_ref, ctx) => {
-      val them = sender()
-      log.info("locating rule by reference")
-      mongo.find_one_bson(MongoActions.FindRuleByReference(rule_ref)).onComplete {
-        case Success(opt_rule_doc) => {
-          (opt_rule_doc match {
-            case Some(rule_doc) => Find.maybe_find_text(rule_doc, "public_id")
-            case None => {
-              log.error(s"no document found (ref=${rule_ref})")
-              None
-            }
-          }) match {
-            case Some(public_id) => {
-              log.info(s"storing execution of rule (id=#{public_id})")
-              mongo.store(new MongoActions.StoreExecution(public_id, ctx)).onComplete {
-                case Success(request_id) => {
-                  log.debug(s"stored execution (request_id=${request_id})")
-                  publish.publish_global(GlobalMessages.TestRunAdded(request_id))
-                  them ! request_id
-                }
-                case Failure(th) => {
-                  log.error("failed store")
-                }
-              }
-            }
-            case None => log.error("failed to get public_id")
-          }
-        }
-
-        case Failure(th) => {
-          log.error(s"failed to find document using ref (ref=#{rule_ref})")
-        }
-      }
-    }
-  }
-
-  def store(doc: JsObject, sender: ActorRef): Unit = {
   }
 }

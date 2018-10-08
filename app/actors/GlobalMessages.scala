@@ -24,6 +24,6 @@ package actors
 
 object GlobalMessages {
   abstract class GlobalMessage
-  case class DocumentAdded(id: String) extends GlobalMessage
-  case class TestRunAdded(id: String) extends GlobalMessage
+  case class SubmissionAdded(id: String) extends GlobalMessage
+  case class ExecutionAdded(id: String) extends GlobalMessage
 }
