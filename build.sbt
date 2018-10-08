@@ -55,7 +55,8 @@ lazy val lib_deps = Seq(
   "joda-time"              %  "joda-time"               % VERSION_JODA,
   "org.joda"               %  "joda-convert"            % VERSION_JODA_CONVERT,
   "org.scalatestplus.play" %% "scalatestplus-play"      % VERSION_SCALA_TEST % Test,
-  "org.scalamock"          %% "scalamock"               % VERSION_SCALA_MOCK % Test
+  "org.scalamock"          %% "scalamock"               % VERSION_SCALA_MOCK % Test,
+  "com.typesafe.akka"      %% "akka-testkit"            % "2.5.17"           % Test
 )
 
 lazy val root = (project in file("."))
