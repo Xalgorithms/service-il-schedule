@@ -66,10 +66,13 @@ class ActionsController @Inject()(
   )
 
   def apply_execute(args: Map[String, String], opt_doc: Option[JsObject]): Future[Result] = {
-    val rule_id = make_rule_id(
-      args.getOrElse("namespace", null),
-      args.getOrElse("name", null),
-      args.getOrElse("version", null))
+    val ns = args.getOrElse("namespace", null)
+    val name = args.getOrElse("name", null)
+    val ver = args.getOrElse("version", null)
+    val rule_id = make_rule_id(ns, name, ver)
+
+    Logger.debug(s"executing (ns=${ns}; name=${name}; ver=${ver}; rule_id=${rule_id})")
+
     (actor_docs ? DocumentsActor.StoreExecution(rule_id, opt_doc)).mapTo[String].map { req_id =>
       Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
     }
