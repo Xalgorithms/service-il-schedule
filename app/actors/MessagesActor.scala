@@ -41,7 +41,7 @@ object MessagesActor {
 class MessagesActor extends Actor with ActorLogging {
   implicit val materializer = ActorMaterializer()
 
-  import Triggers.TriggerById
+  import Triggers._
   import Actions.InvokeTrigger
   import Implicits.trigger_writes
 
@@ -64,18 +64,27 @@ class MessagesActor extends Actor with ActorLogging {
   val _triggers = _source.via(_flow_json).via(_flow_record).to(Producer.plainSink(settings)).run()
 
   def receive = {
-    case GlobalMessages.SubmissionAdded(id) => {
-      send(id, "il.compute.execute")
+    case GlobalMessages.SubmissionAdded(doc_id, verifying, opt_effective_ctxs) => {
+      opt_effective_ctxs match {
+        case Some(effective_ctxs) => {
+          val qname = if (verifying) "il.verify.effective" else "il.compute.execute"
+          effective_ctxs.foreach { effective_ctx =>
+            send(qname, TriggerDocument(doc_id, effective_ctx))
+          }
+        }
+        case None => log.debug("no effective_ctxes provided (id=${doc_id})")
+      }
+
     }
 
     case GlobalMessages.ExecutionAdded(id) => {
-      send(id, "il.verify.rule_execution")
+      send("il.verify.rule_execution", TriggerById(id))
     }
   }
 
-  private def send(id: String, topic: String) = {
-    log.debug(s"> sending message (topic=${topic}; id=${id})")
-    _triggers.offer(InvokeTrigger(topic, TriggerById(id)))
-    log.debug(s"< sent message (topic=${topic}; id=${id})")
+  private def send(topic: String, trigger: Trigger) = {
+    log.debug(s"> sending message (topic=${topic})")
+    _triggers.offer(InvokeTrigger(topic, trigger))
+    log.debug(s"< sent message (topic=${topic})")
   }
 }

@@ -24,6 +24,8 @@ package actors
 
 object GlobalMessages {
   abstract class GlobalMessage
-  case class SubmissionAdded(id: String) extends GlobalMessage
+  case class SubmissionAdded(
+    id: String, verifying: Boolean, effective_ctx: Option[Seq[Map[String, String]]]
+  ) extends GlobalMessage
   case class ExecutionAdded(id: String) extends GlobalMessage
 }

@@ -43,6 +43,7 @@ case class AppAction(name: String, args: Map[String, String], document: Option[J
 @Singleton
 class ActionsController @Inject()(
   @Named("actors-documents") actor_docs: ActorRef,
+  publish: services.Publish,
   cc: ControllerComponents
 ) extends AbstractController(cc) {
   implicit val app_action_read: Reads[AppAction] = (
@@ -53,6 +54,14 @@ class ActionsController @Inject()(
 
   // for ask
   implicit val timeout: Timeout = 5.seconds
+
+  val effective_ctx_keys = Seq(
+    "key",
+    "country",
+    "region",
+    "timezone",
+    "issued"
+  )
 
   // NOTE: a version of this exists in
   // storage/src/main/scala/org/xalgorithms/storage/data/Mongo.scala
@@ -79,9 +88,34 @@ class ActionsController @Inject()(
   }
 
   def apply_submit(args: Map[String, String], opt_doc: Option[JsObject]): Future[Result] = {
-    opt_doc match {
-      case Some(doc) => {
-        (actor_docs ? DocumentsActor.StoreSubmission(doc)).mapTo[String].map { req_id =>
+    val opt_content = opt_doc.flatMap { doc =>
+      (doc \ "content").asOpt[JsObject]
+    }
+
+    val opt_effective_ctxs = opt_doc.flatMap { doc =>
+      (doc \ "effective_contexts").asOpt[JsArray].map { os =>
+        os.value.map { o =>
+          effective_ctx_keys.foldLeft(Map[String, String]()) { (m, k) =>
+            (o \ k).asOpt[String] match {
+              case Some(v) => m ++ Map(k -> v)
+              case None => m
+            }
+          }
+        }
+      }
+    }
+
+    val verifying = args.getOrElse("mode", null) == "verify"
+
+    Logger.debug("content/ctxs")
+    println(opt_content)
+    println(opt_effective_ctxs)
+    println(opt_doc)
+
+    opt_content match {
+      case Some(content) => {
+        // NOTE: boolean should stop here and lead to different objects
+        (actor_docs ? DocumentsActor.StoreSubmission(content, verifying, opt_effective_ctxs)).mapTo[String].map { req_id =>
           Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
         }
       }

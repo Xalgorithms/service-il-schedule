@@ -39,7 +39,7 @@ import services.InjectableMongo
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object DocumentsActor {
-  case class StoreSubmission(doc: JsObject)
+  case class StoreSubmission(doc: JsObject, verifying: Boolean, effective_ctx: Option[Seq[Map[String, String]]])
   case class StoreExecution(rule_id: String, opt_ctx: Option[JsObject])
 }
 
@@ -47,12 +47,12 @@ class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publis
   import DocumentsActor._
 
   def receive = {
-    case StoreSubmission(doc) => {
+    case StoreSubmission(doc, verifying, opt_effective_ctxs) => {
       val them = sender()
       mongo.store(new MongoActions.StoreDocument(doc)).onComplete {
         case Success(public_id) => {
           log.debug(s"stored (public_id=${public_id})")
-          publish.publish_global(GlobalMessages.SubmissionAdded(public_id))
+          publish.publish_global(GlobalMessages.SubmissionAdded(public_id, verifying, opt_effective_ctxs))
           them ! public_id
         }
         case Failure(th) => {
