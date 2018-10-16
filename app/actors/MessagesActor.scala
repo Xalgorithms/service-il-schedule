@@ -63,18 +63,28 @@ class MessagesActor extends Actor with ActorLogging {
   log.info("setting up stream")
   val _triggers = _source.via(_flow_json).via(_flow_record).to(Producer.plainSink(settings)).run()
 
-  def receive = {
-    case GlobalMessages.SubmissionAdded(doc_id, verifying, opt_effective_ctxs) => {
-      opt_effective_ctxs match {
-        case Some(effective_ctxs) => {
-          val qname = if (verifying) "il.verify.effective" else "il.compute.execute"
-          effective_ctxs.foreach { effective_ctx =>
-            send(qname, TriggerDocument(doc_id, effective_ctx))
-          }
+  def trigger_document_on_topic(
+    topic: String,
+    doc_id: String,
+    opt_effective_ctxs: Option[Seq[Map[String, String]]]
+  ) = {
+    opt_effective_ctxs match {
+      case Some(effective_ctxs) => {
+        effective_ctxs.foreach { effective_ctx =>
+          send(topic, TriggerDocument(doc_id, effective_ctx))
         }
-        case None => log.debug("no effective_ctxes provided (id=${doc_id})")
       }
+      case None => log.debug("no effective_ctxes provided (id=${doc_id}; topic=${topic})")
+    }
+  }
 
+  def receive = {
+    case GlobalMessages.SubmissionAdded(doc_id, opt_effective_ctxs) => {
+      trigger_document_on_topic("il.compute.execute", doc_id, opt_effective_ctxs)
+    }
+
+    case GlobalMessages.EffectiveVerificationAdded(doc_id, opt_effective_ctxs) => {
+      trigger_document_on_topic("il.verify.effective", doc_id, opt_effective_ctxs)
     }
 
     case GlobalMessages.ExecutionAdded(id) => {

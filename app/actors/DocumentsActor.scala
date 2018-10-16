@@ -39,26 +39,47 @@ import services.InjectableMongo
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object DocumentsActor {
-  case class StoreSubmission(doc: JsObject, verifying: Boolean, effective_ctx: Option[Seq[Map[String, String]]])
+  case class StoreSubmission(doc: JsObject, effective_ctxs: Option[Seq[Map[String, String]]])
+  case class StoreEffectiveVerification(doc: JsObject, effective_ctxs: Option[Seq[Map[String, String]]])
   case class StoreExecution(rule_id: String, opt_ctx: Option[JsObject])
 }
 
 class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publish) extends Actor with ActorLogging {
   import DocumentsActor._
 
-  def receive = {
-    case StoreSubmission(doc, verifying, opt_effective_ctxs) => {
-      val them = sender()
-      mongo.store(new MongoActions.StoreDocument(doc)).onComplete {
-        case Success(public_id) => {
-          log.debug(s"stored (public_id=${public_id})")
-          publish.publish_global(GlobalMessages.SubmissionAdded(public_id, verifying, opt_effective_ctxs))
-          them ! public_id
-        }
-        case Failure(th) => {
-          log.error(s"failed store")
-        }
+  def store_document_and_publish(
+    doc: JsObject,
+    opt_effective_ctxs: Option[Seq[Map[String, String]]],
+    fn: (String, Option[Seq[Map[String, String]]]) => GlobalMessages.GlobalMessage
+  ) = {
+    val them = sender()
+    mongo.store(new MongoActions.StoreDocument(doc)).onComplete {
+      case Success(public_id) => {
+        log.debug(s"stored (public_id=${public_id})")
+        publish.publish_global(fn(public_id, opt_effective_ctxs))
+        them ! public_id
       }
+      case Failure(th) => {
+        log.error(s"failed store")
+      }
+    }
+  }
+
+  def receive = {
+    case StoreSubmission(doc, opt_effective_ctxs) => {
+      val fn = (public_id: String, effective_ctxs: Option[Seq[Map[String, String]]]) => {
+        GlobalMessages.SubmissionAdded(public_id, opt_effective_ctxs)
+      }
+
+      store_document_and_publish(doc, opt_effective_ctxs, fn)
+    }
+
+    case StoreEffectiveVerification(doc, opt_effective_ctxs) => {
+      val fn = (public_id: String, effective_ctxs: Option[Seq[Map[String, String]]]) => {
+        GlobalMessages.EffectiveVerificationAdded(public_id, opt_effective_ctxs)
+      }
+
+      store_document_and_publish(doc, opt_effective_ctxs, fn)
     }
 
     case StoreExecution(rule_id, opt_ctx) => {

@@ -105,17 +105,9 @@ class ActionsController @Inject()(
       }
     }
 
-    val verifying = args.getOrElse("mode", null) == "verify"
-
-    Logger.debug("content/ctxs")
-    println(opt_content)
-    println(opt_effective_ctxs)
-    println(opt_doc)
-
     opt_content match {
       case Some(content) => {
-        // NOTE: boolean should stop here and lead to different objects
-        (actor_docs ? DocumentsActor.StoreSubmission(content, verifying, opt_effective_ctxs)).mapTo[String].map { req_id =>
+        (actor_docs ? DocumentsActor.StoreSubmission(content, opt_effective_ctxs)).mapTo[String].map { req_id =>
           Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
         }
       }
@@ -123,9 +115,50 @@ class ActionsController @Inject()(
     }
   }
 
+  def apply_verify(args: Map[String, String], opt_doc: Option[JsObject]): Future[Result] = {
+    val opt_content = opt_doc.flatMap { doc =>
+      (doc \ "content").asOpt[JsObject]
+    }
+
+    val opt_effective_ctxs = opt_doc.flatMap { doc =>
+      (doc \ "effective_contexts").asOpt[JsArray].map { os =>
+        os.value.map { o =>
+          effective_ctx_keys.foldLeft(Map[String, String]()) { (m, k) =>
+            (o \ k).asOpt[String] match {
+              case Some(v) => m ++ Map(k -> v)
+              case None => m
+            }
+          }
+        }
+      }
+    }
+
+    args("what") match {
+      case "effective" => {
+        opt_content match {
+          case Some(content) => {
+            val m = DocumentsActor.StoreEffectiveVerification(content, opt_effective_ctxs)
+              (actor_docs ? m).mapTo[String].map { req_id =>
+                Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
+              }
+          }
+
+          case None => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "no_content")))
+        }
+      }
+
+      case "applicable" => {
+        Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "unimplemented")))
+      }
+
+      case _ => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "unknown_verify_what")))
+    }
+  }
+
   private val actions = Map(
     "execute" -> (apply_execute _),
-    "submit"  -> (apply_submit _)
+    "submit"  -> (apply_submit _),
+    "verify"  -> (apply_verify _)
   )
 
   def create() = Action.async(validate_json) { request =>
