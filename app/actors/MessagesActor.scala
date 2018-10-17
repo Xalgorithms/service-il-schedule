@@ -66,7 +66,7 @@ class MessagesActor extends Actor with ActorLogging {
   def trigger_document_on_topic(
     topic: String,
     doc_id: String,
-    opt_effective_ctxs: Option[Seq[Map[String, String]]]
+    opt_effective_ctxs: Option[Seq[Map[String, String]]] = None
   ) = {
     opt_effective_ctxs match {
       case Some(effective_ctxs) => {
@@ -74,7 +74,7 @@ class MessagesActor extends Actor with ActorLogging {
           send(topic, TriggerDocument(doc_id, effective_ctx))
         }
       }
-      case None => log.debug("no effective_ctxes provided (id=${doc_id}; topic=${topic})")
+      case None => log.debug("no context supplied")
     }
   }
 
@@ -85,6 +85,10 @@ class MessagesActor extends Actor with ActorLogging {
 
     case GlobalMessages.EffectiveVerificationAdded(doc_id, opt_effective_ctxs) => {
       trigger_document_on_topic("il.verify.effective", doc_id, opt_effective_ctxs)
+    }
+
+    case GlobalMessages.ApplicableVerificationAdded(doc_id, rule_id) => {
+      send("il.verify.applicable", TriggerApplicable(doc_id, rule_id))
     }
 
     case GlobalMessages.ExecutionAdded(id) => {

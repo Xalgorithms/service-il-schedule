@@ -41,6 +41,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object DocumentsActor {
   case class StoreSubmission(doc: JsObject, effective_ctxs: Option[Seq[Map[String, String]]])
   case class StoreEffectiveVerification(doc: JsObject, effective_ctxs: Option[Seq[Map[String, String]]])
+  case class StoreApplicableVerification(doc: JsObject, rule_id: String)
   case class StoreExecution(rule_id: String, opt_ctx: Option[JsObject])
 }
 
@@ -80,6 +81,14 @@ class DocumentsActor @Inject() (mongo: InjectableMongo, publish: services.Publis
       }
 
       store_document_and_publish(doc, opt_effective_ctxs, fn)
+    }
+
+    case StoreApplicableVerification(doc, rule_id) => {
+      val fn = (public_id: String, effective_ctxs: Option[Seq[Map[String, String]]]) => {
+        GlobalMessages.ApplicableVerificationAdded(public_id, rule_id)
+      }
+
+      store_document_and_publish(doc, None, fn)
     }
 
     case StoreExecution(rule_id, opt_ctx) => {

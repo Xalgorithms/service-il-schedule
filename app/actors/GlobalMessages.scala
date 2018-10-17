@@ -30,5 +30,6 @@ object GlobalMessages {
   case class EffectiveVerificationAdded(
     id: String, effective_ctx: Option[Seq[Map[String, String]]]
   ) extends GlobalMessage
+  case class ApplicableVerificationAdded(doc_id: String, rule_id: String) extends GlobalMessage
   case class ExecutionAdded(id: String) extends GlobalMessage
 }

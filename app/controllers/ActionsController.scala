@@ -148,7 +148,17 @@ class ActionsController @Inject()(
       }
 
       case "applicable" => {
-        Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "unimplemented")))
+        opt_content match {
+          case Some(content) => {
+            val rule_id = args("rule_id")
+            val m = DocumentsActor.StoreApplicableVerification(content, rule_id)
+              (actor_docs ? m).mapTo[String].map { req_id =>
+                Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
+              }
+          }
+
+          case None => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "no_content")))
+        }
       }
 
       case _ => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "unknown_verify_what")))
