@@ -121,6 +121,7 @@ class ActionsController @Inject()(
     }
 
     val opt_effective_ctxs = opt_doc.flatMap { doc =>
+      // TODO: parse doc/sections
       (doc \ "effective_contexts").asOpt[JsArray].map { os =>
         os.value.map { o =>
           effective_ctx_keys.foldLeft(Map[String, String]()) { (m, k) =>
