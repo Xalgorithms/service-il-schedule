@@ -1,0 +1,15 @@
+{
+  "name" : "verify",
+  "args" : {
+    "what" : "effective",
+    "key" : "key0",
+    "country" : "CA",
+    "region" : "ON",
+    "timezone" : "America/Toronto",
+    "issued" : "2016-11-15T01:23:04-04:00"
+  },
+  "document" : {
+    "a" : 1,
+    "b" : "2"
+  }
+}
