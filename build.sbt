@@ -20,7 +20,6 @@
 // You should have received a copy of the GNU Affero General Public
 // License along with this program. If not, see
 // <http://www.gnu.org/licenses/>.
-lazy val VERSION_MONGO_SCALA       = "2.4.2"
 lazy val VERSION_SCALA             = "2.12.4"
 lazy val VERSION_SCALA_TEST        = "3.1.2"
 lazy val VERSION_CASSANDRA         = "3.5.0"
@@ -32,9 +31,6 @@ lazy val VERSION_PHANTOM           = "2.24.0"
 lazy val VERSION_JODA              = "2.10"
 lazy val VERSION_JODA_CONVERT      = "2.1"
 
-// ours
-lazy val VERSION_STORAGE           = "0.0.8"
-
 lazy val meta = Seq(
   name := """service-il-schedule""",
   organization := "org.xalgorithms",
@@ -44,8 +40,6 @@ lazy val meta = Seq(
 
 lazy val lib_deps = Seq(
   guice,
-  "org.xalgorithms"        %% "il-storage"              % VERSION_STORAGE from s"https://github.com/Xalgorithms/lib-storage/releases/download/v${VERSION_STORAGE}/il-storage_2.12-${VERSION_STORAGE}.jar",
-  "org.mongodb.scala"      %% "mongo-scala-driver"      % VERSION_MONGO_SCALA,
   "com.typesafe.akka"      %% "akka-stream-kafka"       % VERSION_AKKA_STREAM_KAFKA,
   "com.datastax.cassandra" %  "cassandra-driver-core"   % VERSION_CASSANDRA,
   "com.outworkers"         %% "phantom-dsl"             % VERSION_PHANTOM,     
