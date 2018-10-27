@@ -1,7 +1,13 @@
 {
   "name" : "submit",
-  "args" : {},
-  "payload" : {
+  "args" : {
+    "key" : "key0",
+    "country" : "CA",
+    "region" : "ON",
+    "timezone" : "America/Toronto",
+    "issued" : "2016-11-15T01:23:04-04:00"
+   },
+  "document" : {
     "envelope" : {
       "issued" : "2016-11-15T01:23:04-04:00",
       "currency" : "CAD",

@@ -41,10 +41,6 @@ object MessagesActor {
 class MessagesActor extends Actor with ActorLogging {
   implicit val materializer = ActorMaterializer()
 
-  import Triggers._
-  import Actions.InvokeTrigger
-  import Implicits.trigger_writes
-
   private val broker = Properties.envOrElse("KAFKA_BROKER", "kafka:9092")
   log.info(s"creating kafka settings (broker=${broker})")
 
@@ -52,53 +48,67 @@ class MessagesActor extends Actor with ActorLogging {
     context.system, new StringSerializer, new StringSerializer
   ).withBootstrapServers(broker)
 
-  private val _source = Source.queue[InvokeTrigger](5, OverflowStrategy.backpressure)
-  private val _flow_json = Flow[InvokeTrigger].map { o =>
-    (o.topic, Json.toJson(o.trigger))
-  }
+  private val _source = Source.queue[(String, JsValue)](5, OverflowStrategy.backpressure)
   private val _flow_record = Flow[(String, JsValue)].map { case (topic, payload) =>
     new ProducerRecord[String, String](topic, payload.toString)
   }
 
   log.info("setting up stream")
-  val _triggers = _source.via(_flow_json).via(_flow_record).to(Producer.plainSink(settings)).run()
-
-  def trigger_document_on_topic(
-    topic: String,
-    doc_id: String,
-    opt_effective_ctxs: Option[Seq[Map[String, String]]] = None
-  ) = {
-    opt_effective_ctxs match {
-      case Some(effective_ctxs) => {
-        effective_ctxs.foreach { effective_ctx =>
-          send(topic, TriggerDocument(doc_id, effective_ctx))
-        }
-      }
-      case None => log.debug("no context supplied")
-    }
-  }
+  val _triggers = _source.via(_flow_record).to(Producer.plainSink(settings)).run()
 
   def receive = {
-    case GlobalMessages.SubmissionAdded(doc_id, opt_effective_ctxs) => {
-      trigger_document_on_topic("il.compute.execute", doc_id, opt_effective_ctxs)
+    case GlobalMessages.Execute(rule_id, req_id, opt_doc) => {
+      log.debug(s"execute (rule_id=${rule_id}; req_id=${req_id})")
+      val args = Json.obj(
+        "rule_id"    -> rule_id,
+        "request_id" -> req_id
+      ) ++ (opt_doc match {
+        case Some(doc) => Json.obj("context" -> doc)
+        case None => Json.obj()
+      })
+
+      val o = Json.obj(
+        "context" -> Map("task" -> "triggers", "action" -> "execute_rule"),
+        "args"    -> args
+      )
+      _triggers.offer(("il.compute.execute", o))
     }
 
-    case GlobalMessages.EffectiveVerificationAdded(doc_id, opt_effective_ctxs) => {
-      trigger_document_on_topic("il.verify.effective", doc_id, opt_effective_ctxs)
+    case GlobalMessages.Submit(req_id, effective_props, doc) => {
+      val o = Json.obj(
+        "context" -> Map("task" -> "triggers", "action" -> "submit_document"),
+        "args"    -> Json.obj(
+          "request_id"           -> req_id,
+          "effective_properties" -> effective_props,
+          "document"             -> doc
+        )
+      )
+      _triggers.offer(("il.compute.documents", o))
     }
 
-    case GlobalMessages.ApplicableVerificationAdded(doc_id, rule_id) => {
-      send("il.verify.applicable", TriggerApplicable(doc_id, rule_id))
+    case GlobalMessages.VerifyEffective(req_id, effective_props, doc) => {
+      val o = Json.obj(
+        "context" -> Map("task" -> "triggers", "action" -> "verify_effective"),
+        "args"    -> Json.obj(
+          "request_id"           -> req_id,
+          "effective_properties" -> effective_props,
+          "document"             -> doc
+        )
+      )
+      _triggers.offer(("il.verify.effective", o))
     }
 
-    case GlobalMessages.ExecutionAdded(id) => {
-      send("il.verify.rule_execution", TriggerById(id))
+    case GlobalMessages.VerifyApplicable(req_id, rule_id, doc) => {
+      val o = Json.obj(
+        "context" -> Map("task" -> "triggers", "action" -> "verify_applicable"),
+        "args"    -> Json.obj(
+          "request_id" -> req_id,
+          "rule_id"    -> rule_id,
+          "document"   -> doc
+        )
+      )
+      log.debug("here")
+      _triggers.offer(("il.verify.applicable", o))
     }
-  }
-
-  private def send(topic: String, trigger: Trigger) = {
-    log.debug(s"> sending message (topic=${topic})")
-    _triggers.offer(InvokeTrigger(topic, trigger))
-    log.debug(s"< sent message (topic=${topic})")
   }
 }

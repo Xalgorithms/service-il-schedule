@@ -36,13 +36,11 @@ import scala.util.{ Success, Failure }
 
 import ExecutionContext.Implicits.global
 
-import actors.DocumentsActor
-
 case class AppAction(name: String, args: Map[String, String], document: Option[JsObject])
 
 @Singleton
 class ActionsController @Inject()(
-  @Named("actors-documents") actor_docs: ActorRef,
+  system: ActorSystem,
   publish: services.Publish,
   cc: ControllerComponents
 ) extends AbstractController(cc) {
@@ -55,7 +53,7 @@ class ActionsController @Inject()(
   // for ask
   implicit val timeout: Timeout = 5.seconds
 
-  val effective_ctx_keys = Seq(
+  val effective_keys = Seq(
     "key",
     "country",
     "region",
@@ -66,8 +64,16 @@ class ActionsController @Inject()(
   // NOTE: a version of this exists in
   // storage/src/main/scala/org/xalgorithms/storage/data/Mongo.scala
   // the storage lib should provide a factored make_rule_id
-  def make_rule_id(ns: String, name: String, version: String): String = {
-    play.api.libs.Codecs.sha1(s"R(${ns}:${name}:${version})")
+  def make_rule_id_from(args: Map[String, String]): String = {
+    val ns = args.getOrElse("namespace", "")
+    val name = args.getOrElse("name", "")
+    val ver = args.getOrElse("version", "")
+
+    val rule_id = play.api.libs.Codecs.sha1(s"R(${ns}:${name}:${ver})")
+
+    Logger.debug(s"generating rule_id (ns=${ns}; name=${name}; ver=${ver}; rule_id=${rule_id})")
+
+    rule_id
   }
 
   def validate_json[A : Reads] = parse.json.validate(
@@ -75,96 +81,124 @@ class ActionsController @Inject()(
   )
 
   def apply_execute(args: Map[String, String], opt_doc: Option[JsObject]): Future[Result] = {
-    val ns = args.getOrElse("namespace", null)
-    val name = args.getOrElse("name", null)
-    val ver = args.getOrElse("version", null)
-    val rule_id = make_rule_id(ns, name, ver)
+    val rule_id = make_rule_id_from(args)
+    val req_id = java.util.UUID.randomUUID.toString
+    val ref = system.actorOf(actors.MessagesActor.props)
 
-    Logger.debug(s"executing (ns=${ns}; name=${name}; ver=${ver}; rule_id=${rule_id})")
-
-    (actor_docs ? DocumentsActor.StoreExecution(rule_id, opt_doc)).mapTo[String].map { req_id =>
-      Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
-    }
+    Logger.debug(s"executing (rule_id=${rule_id}; req_id=${req_id})")
+    ref ! actors.GlobalMessages.Execute(rule_id, req_id, opt_doc)
+    Future.successful(Ok(Json.obj("status" -> "ok", "request_id" -> req_id)))
   }
 
   def apply_submit(args: Map[String, String], opt_doc: Option[JsObject]): Future[Result] = {
-    val opt_content = opt_doc.flatMap { doc =>
-      (doc \ "content").asOpt[JsObject]
+    // each submission is a document in a SINGLE effectiveness, therefore, we
+    // keep the effective keys in the args
+    opt_doc match {
+      case Some(doc) => {
+        val req_id = java.util.UUID.randomUUID.toString
+        val effective_props = args.filterKeys(effective_keys.contains(_))
+        val ref = system.actorOf(actors.MessagesActor.props)
+
+        Logger.debug(s"submitting document (props=${effective_props})")
+        ref ! actors.GlobalMessages.Submit(req_id, effective_props, doc)
+        Future.successful(Ok(Json.obj("status" -> "ok", "request_id" -> req_id)))
+      }
+
+      case None => Future.successful(BadRequest(Json.obj("status" -> "fail_no_document")))
+    }
+  }
+
+  def apply_verify_effective(args: Map[String, String], doc: JsObject): Future[Result] = {
+    val req_id = java.util.UUID.randomUUID.toString
+    val effective_props = args.filterKeys(effective_keys.contains(_))
+    val ref = system.actorOf(actors.MessagesActor.props)
+
+    ref ! actors.GlobalMessages.VerifyEffective(req_id, effective_props, doc)
+
+    Future.successful(Ok(Json.obj("status" -> "ok", "request_id" -> req_id)))
+  }
+
+  def apply_verify_applicable(args: Map[String, String], doc: JsObject): Future[Result] = {
+    args.get("rule_id") match {
+      case Some(rule_id) => {
+        val req_id = java.util.UUID.randomUUID.toString
+        val ref = system.actorOf(actors.MessagesActor.props)
+
+        ref ! actors.GlobalMessages.VerifyApplicable(req_id, rule_id, doc)
+
+        Future.successful(Ok(Json.obj("status" -> "ok", "request_id" -> req_id)))
+      }
+
+      case None => Future.successful(BadRequest(Json.obj("status" -> "fail_rule_id_required")))
     }
 
-    val opt_effective_ctxs = opt_doc.flatMap { doc =>
-      (doc \ "effective_contexts").asOpt[JsArray].map { os =>
-        os.value.map { o =>
-          effective_ctx_keys.foldLeft(Map[String, String]()) { (m, k) =>
-            (o \ k).asOpt[String] match {
-              case Some(v) => m ++ Map(k -> v)
-              case None => m
-            }
-          }
-        }
-      }
-    }
-
-    opt_content match {
-      case Some(content) => {
-        (actor_docs ? DocumentsActor.StoreSubmission(content, opt_effective_ctxs)).mapTo[String].map { req_id =>
-          Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
-        }
-      }
-      case None => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "document_required")))
-    }
   }
 
   def apply_verify(args: Map[String, String], opt_doc: Option[JsObject]): Future[Result] = {
-    val opt_content = opt_doc.flatMap { doc =>
-      (doc \ "content").asOpt[JsObject]
-    }
-
-    val opt_effective_ctxs = opt_doc.flatMap { doc =>
-      // TODO: parse doc/sections
-      (doc \ "effective_contexts").asOpt[JsArray].map { os =>
-        os.value.map { o =>
-          effective_ctx_keys.foldLeft(Map[String, String]()) { (m, k) =>
-            (o \ k).asOpt[String] match {
-              case Some(v) => m ++ Map(k -> v)
-              case None => m
-            }
-          }
+    opt_doc match {
+      case Some(doc) => args.get("what") match {
+        case Some(what) => what match {
+          case "effective"  => apply_verify_effective(args, doc)
+          case "applicable" => apply_verify_applicable(args, doc)
+          case _  => Future.successful(BadRequest(Json.obj("status" -> "fail_unknown_what", "what" -> what)))
         }
-      }
-    }
-
-    args("what") match {
-      case "effective" => {
-        opt_content match {
-          case Some(content) => {
-            val m = DocumentsActor.StoreEffectiveVerification(content, opt_effective_ctxs)
-              (actor_docs ? m).mapTo[String].map { req_id =>
-                Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
-              }
-          }
-
-          case None => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "no_content")))
-        }
+        case None       => Future.successful(BadRequest(Json.obj("status" -> "fail_no_what")))
       }
 
-      case "applicable" => {
-        opt_content match {
-          case Some(content) => {
-            val rule_id = args("rule_id")
-            val m = DocumentsActor.StoreApplicableVerification(content, rule_id)
-              (actor_docs ? m).mapTo[String].map { req_id =>
-                Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
-              }
-          }
-
-          case None => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "no_content")))
-        }
-      }
-
-      case _ => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "unknown_verify_what")))
+      case None => Future.successful(BadRequest(Json.obj("status" -> "fail_no_document")))
     }
   }
+
+  // def apply_verify(args: Map[String, String], opt_doc: Option[JsObject]): Future[Result] = {
+  //   val opt_content = opt_doc.flatMap { doc =>
+  //     (doc \ "content").asOpt[JsObject]
+  //   }
+
+  //   val opt_effective_ctxs = opt_doc.flatMap { doc =>
+  //     // TODO: parse doc/sections
+  //     (doc \ "effective_contexts").asOpt[JsArray].map { os =>
+  //       os.value.map { o =>
+  //         effective_ctx_keys.foldLeft(Map[String, String]()) { (m, k) =>
+  //           (o \ k).asOpt[String] match {
+  //             case Some(v) => m ++ Map(k -> v)
+  //             case None => m
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   args("what") match {
+  //     case "effective" => {
+  //       opt_content match {
+  //         case Some(content) => {
+  //           val m = DocumentsActor.StoreEffectiveVerification(content, opt_effective_ctxs)
+  //             (actor_docs ? m).mapTo[String].map { req_id =>
+  //               Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
+  //             }
+  //         }
+
+  //         case None => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "no_content")))
+  //       }
+  //     }
+
+  //     case "applicable" => {
+  //       opt_content match {
+  //         case Some(content) => {
+  //           val rule_id = args("rule_id")
+  //           val m = DocumentsActor.StoreApplicableVerification(content, rule_id)
+  //             (actor_docs ? m).mapTo[String].map { req_id =>
+  //               Ok(Json.obj("status" -> "ok", "request_id" -> req_id))
+  //             }
+  //         }
+
+  //         case None => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "no_content")))
+  //       }
+  //     }
+
+  //     case _ => Future.successful(Ok(Json.obj("status" -> "fail", "reason" -> "unknown_verify_what")))
+  //   }
+  // }
 
   private val actions = Map(
     "execute" -> (apply_execute _),

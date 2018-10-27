@@ -22,14 +22,12 @@
 // <http://www.gnu.org/licenses/>.
 package actors
 
+import play.api.libs.json._
+
 object GlobalMessages {
   abstract class GlobalMessage
-  case class SubmissionAdded(
-    id: String, effective_ctx: Option[Seq[Map[String, String]]]
-  ) extends GlobalMessage
-  case class EffectiveVerificationAdded(
-    id: String, effective_ctx: Option[Seq[Map[String, String]]]
-  ) extends GlobalMessage
-  case class ApplicableVerificationAdded(doc_id: String, rule_id: String) extends GlobalMessage
-  case class ExecutionAdded(id: String) extends GlobalMessage
+  case class Execute(rule_id: String, req_id: String, opt_doc: Option[JsObject]) extends GlobalMessage
+  case class Submit(req_id: String, effective_props: Map[String, String], doc: JsObject) extends GlobalMessage
+  case class VerifyEffective(req_id: String, effective_props: Map[String, String], doc: JsObject) extends GlobalMessage
+  case class VerifyApplicable(req_id: String, rule_id: String, doc: JsObject) extends GlobalMessage
 }

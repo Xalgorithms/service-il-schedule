@@ -1,0 +1,6 @@
+{
+  "name" : "verify",
+  "args" : {
+    "what" : "effective"
+  }
+}
